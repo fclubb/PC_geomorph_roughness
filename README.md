@@ -32,7 +32,7 @@ source activate py35
 pip install laspy
 ```
 
-This code uses [scipy.spatial.cKDTree](https://docs.scipy.org/doc/scipy-0.19.1/reference/generated/scipy.spatial.cKDTree.html). The KDTree search could be made much faster with [pykdtree](https://github.com/storpipfugl/pykdtree). However, pyKDTree doesn't allow to easily save the tree - so, if you intend to run this repeatedly iterating through various search radii, the cKDTree implementation is usefull, too. For very large point clouds, the pyKDTree algorithm is significantly faster for generating and querying the KDtree and will increase processing speed. To install pyKDTree:
+This code uses [scipy.spatial.cKDTree](https://docs.scipy.org/doc/scipy-0.19.1/reference/generated/scipy.spatial.cKDTree.html). The KDTree search could be made much faster with [pykdtree](https://github.com/storpipfugl/pykdtree). However, pyKDTree doesn't allow to easily save the tree - so, if you intend to run this repeatedly iterating through various search radii, the cKDTree implementation is usefull. For very large point clouds, the pyKDTree algorithm is significantly faster for generating and querying the KDtree and will increase processing speed. To install pyKDTree:
 ```
 source activate py35
 conda install -c conda-forge pykdtree
