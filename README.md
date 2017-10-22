@@ -1,4 +1,4 @@
-# PC Geomorph roughness
+# Point Cloud (PC) Geomorphologic roughness and topographic detrending
 Detrending Point Cloud (PC) data with slope and calculating topographic roughness and curvature from PCs.
 
 The code reads in a ground-classified PC from a LAS/LAZ file and calculates several geomorphology-relevant metrics on the PC. Input files can be from lidar or SfM PC, but should be ground-classified. The algorithm allows defining a radius which is used to fit a linear plane through the point cloud to detrend the data (i.e., normalize the point cloud with mean elevation of 0). These data are used to calculate deviations from the mean (roughness) and identify rills, arroyos, incised canyons, and other forms of erosion processes. By varying the radius over which the plane is fitted, several scales of the landscape can be analyzed (similar to varying radii of topographic relief).  The algorithm choses seed points from the PC with a user-defined spacing (for example 1m) and calculated statistics for each seed point with a given radius (for example 2m).
