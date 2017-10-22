@@ -18,7 +18,8 @@
 			<Field name="11Dz_std" type="Real" width="8" precision="7"/>
 			<Field name="12Dz_range" type="Real" width="8" precision="7"/>
 			<Field name="13Dz_9010p" type="Real" width="8" precision="7"/>
-			<Field name="14Pl_slp" type="Real" width="8" precision="7"/>
-			<Field name="15Nr_lidar" type="Real" width="8"/>
+			<Field name="14Dz_7525p" type="Real" width="8" precision="7"/>
+			<Field name="15Pl_slp" type="Real" width="8" precision="7"/>
+			<Field name="16Nr_lidar" type="Real" width="8"/>
 	</OGRVRTLayer>
 </OGRVRTDataSource>
