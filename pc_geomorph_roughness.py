@@ -22,7 +22,6 @@ import matplotlib.patches as mpatches
 import matplotlib.cm as cm
 from mpl_toolkits.mplot3d import Axes3D
 
-
 def drawSphere(xCenter, yCenter, zCenter, r):
     #draw sphere
     u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
@@ -105,9 +104,8 @@ if os.path.exists(geotif_dir) == False:
 nrlidari_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_nrlidar.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
 da_stdi_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_stddev.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
 dz_range9010i_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_da_range9010.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
+dz_range7525i_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_da_range7525.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
 plane_slopei_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_planeslope.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
-
-
 
 ### Loading data and filtering
 print('Loading input file: %s'%args.inlas)
@@ -133,7 +131,7 @@ if args.store_color == True:
     pcl_red = pcl_red[idx_ground,:]
 print('done.')
 
-### pyKDTree setup and calculation
+### cKDTree setup and calculation
 #Generate KDTree for fast searching
 #cKDTree is faster than KDTree, pyKDTree is fast then cKDTree
 print('Generating XY-cKDTree... ',end='', flush=True)
@@ -174,7 +172,7 @@ y_coords = np.arange(y_min.round(), y_max.round(), args.raster_m) + args.raster_
 #create combination of all coordinates (this is using lists and could be optimized)
 xy_coordinates = np.array([(x,y) for x in x_coords for y in y_coords])
 
-#using the 2D kdtree to find the points that are closest to the defined 2D raster overlay
+#using the 2D KDTree to find the points that are closest to the defined 2D raster overlay
 [pcl_xyg_ckdtree_distance, pcl_xyg_ckdtree_id] = pcl_xyg_ckdtree.query(xy_coordinates, k=1)
 
 #take only points that are within the search radius (may omit some points at the border regions
@@ -343,11 +341,11 @@ if os.path.exists(pcl_seed_pts_stats_hdf_fn) == False:
         #    ax2.set_title('3D view of normalized lidar points (colored) and lidar seed point (black star) (ground only)')
         #    seed_fig_fname = 'seed_pts_fig_%d.png'%i     
         #    fig.savefig(seed_fig_fname, bbox_inches='tight')
-        print('done.')
+    print('done.')
 else:
     hdf_in = h5py.File(pcl_seed_pts_stats_hdf_fn,'r')
-    pts_seed_stats = hdf_in['pts_seed_stats']
-
+    pts_seed_stats = np.array(hdf_in['pts_seed_stats'])
+    print('Statistics loaded from file: %s'%os.path.basename(pcl_seed_pts_stats_hdf_fn))
 
 ### Write to LAS file (modiy to include LAZ files)
 #outFile = File(args.outlas, mode='w', header=inFile.header)
@@ -433,25 +431,52 @@ if os.path.exists(nrlidari_tif_fn) == False or os.path.exists(da_stdi_tif_fn) ==
     #dz_meani = interpolate.griddata(points, pts_seed_stats[idx_nonan,8].T, (xx,yy), method='cubic')
     #dz_meani = dz_meani[:,:,0]
     
-    #interpolate Dz_mean
-    dz_stdi = interpolate.griddata(points, pts_seed_stats[idx_nonan,10].T, (xx,yy), method='cubic')
-    dz_stdi = dz_stdi[:,:,0]
     
     #interpolate nr_lidar_measurements
-    nr_lidari = interpolate.griddata(points, pts_seed_stats[idx_nonan,14].T, (xx,yy), method='cubic')
-    nr_lidari = nr_lidari[:,:,0]
+    if os.path.exists(nrlidari_tif_fn) == False:
+        nr_lidari = interpolate.griddata(points, pts_seed_stats[idx_nonan,15].T, (xx,yy), method='cubic')
+        nr_lidari = nr_lidari[:,:,0]
+    else:
+        ds = gdal.Open(nrlidari_tif_fn)
+        nr_lidari = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
+
+        
     
-    #interpolate Dz_range
-    #dz_rangei = interpolate.griddata(points, pts_seed_stats[idx_nonan,11].T, (xx,yy), method='cubic')
-    #dz_rangei = dz_rangei[:,:,0]
+    if os.path.exists(da_stdi_tif_fn) == False:
+        dz_stdi = interpolate.griddata(points, pts_seed_stats[idx_nonan,10].T, (xx,yy), method='cubic')
+        dz_stdi = dz_stdi[:,:,0]
+    else:
+        ds = gdal.Open(da_stdi_tif_fn)
+        dz_stdi = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
+
+    #interpolate Dz_range 90-10 percentile
+    if os.path.exists(dz_range9010i_tif_fn) == False:
+        dz_range9010i = interpolate.griddata(points, pts_seed_stats[idx_nonan,12].T, (xx,yy), method='cubic')
+        dz_range9010i = dz_range9010i[:,:,0]
+    else:
+        ds = gdal.Open(dz_range9010i_tif_fn)
+        dz_range9010i = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
     
-    #interpolate Dz_range
-    dz_range9010i = interpolate.griddata(points, pts_seed_stats[idx_nonan,12].T, (xx,yy), method='cubic')
-    dz_range9010i = dz_range9010i[:,:,0]
+    #interpolate Dz_range 75-25 percentile
+    if os.path.exists(dz_range7525i_tif_fn) == False:
+        dz_range7525i = interpolate.griddata(points, pts_seed_stats[idx_nonan,13].T, (xx,yy), method='cubic')
+        dz_range7525i = dz_range7525i[:,:,0]
+    else:
+        ds = gdal.Open(dz_range7525i_tif_fn)
+        dz_range7525i = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
     
     #interpolate Plane_slope
-    plane_slopei = interpolate.griddata(points, pts_seed_stats[idx_nonan,13].T, (xx,yy), method='cubic')
-    plane_slopei = plane_slopei[:,:,0]
+    if os.path.exists(plane_slopei_tif_fn) == False:
+        plane_slopei = interpolate.griddata(points, pts_seed_stats[idx_nonan,14].T, (xx,yy), method='cubic')
+        plane_slopei = plane_slopei[:,:,0]
+    else:
+        ds = gdal.Open(plane_slopei_tif_fn)
+        plane_slopei = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
     print('done.')
 
 if os.path.exists(nrlidari_tif_fn) == False or os.path.exists(da_stdi_tif_fn) == False or \
@@ -497,6 +522,16 @@ if os.path.exists(nrlidari_tif_fn) == False or os.path.exists(da_stdi_tif_fn) ==
         output_raster.FlushCache()
         output_raster=None
     
+    if os.path.exists(dz_range7525i_tif_fn) == False:
+        output_raster = gdal.GetDriverByName('GTiff').Create(dz_range7525i_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+        output_raster.SetGeoTransform(geotransform)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(args.epsg_code)
+        output_raster.SetProjection( srs.ExportToWkt() )
+        output_raster.GetRasterBand(1).WriteArray(dz_range7525i) 
+        output_raster.FlushCache()
+        output_raster=None
+
     if os.path.exists(plane_slopei_tif_fn) == False:
         output_raster = gdal.GetDriverByName('GTiff').Create(plane_slopei_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
         output_raster.SetGeoTransform(geotransform)
@@ -521,7 +556,7 @@ if os.path.exists(nrlidari_tif_fn) == False or os.path.exists(da_stdi_tif_fn) ==
 ### Plot output to figures
 seed_pts_stats_png = '_seed_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
 pcl_seed_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + seed_pts_stats_png)
-print('Generating overview figure %s... '%os.path.basename(pcl_seed_pts_fig_overview_fn))
+print('Generating overview figure %s... '%os.path.basename(pcl_seed_pts_fig_overview_fn), end='', flush=True)
 if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
     fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
     #fig = plt.figure(figsize=(11.69,8.27), dpi=150)
@@ -539,7 +574,8 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
 
     ax2 = fig.add_subplot(232)
     ax2.grid()
-    cax2 = ax2.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,14], s=0.5, cmap=plt.get_cmap('gnuplot'), linewidth=0)
+    cax2 = ax2.imshow(nr_lidari,cmap=plt.get_cmap('gnuplot'))
+#            ax2.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,15], s=0.5, cmap=plt.get_cmap('gnuplot'), linewidth=0)    
     ax2.set_title('Nr. of lidar measurements for each seed point',y=1.05)
     cbar = fig.colorbar(cax2)
     cbar.set_label('#')
@@ -549,7 +585,8 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
     
     ax3 = fig.add_subplot(233)
     ax3.grid()
-    cax3 = ax3.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=0.5, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
+    #cax3 = ax3.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=0.5, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
+    cax3 = ax3.imshow(plane_slopei, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(plane_slopei, 10), vmax=np.nanpercentile(plane_slopei, 90))
     ax3.set_title('Slope of fitted plane for each sphere (r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax3)
     cbar.set_label('Slope (m/m)')
@@ -559,7 +596,8 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
 
     ax4 = fig.add_subplot(234)
     ax4.grid()
-    cax4 = ax4.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,12], s=0.5, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(pts_seed_stats[:,12], 10), vmax=np.nanpercentile(pts_seed_stats[:,12], 90), linewidth=0)
+    #cax4 = ax4.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,12], s=0.5, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(pts_seed_stats[:,12], 10), vmax=np.nanpercentile(pts_seed_stats[:,12], 90), linewidth=0)
+    cax4 = ax4.imshow(dz_range9010i, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(dz_range9010i, 10), vmax=np.nanpercentile(dz_range9010i, 90))
     ax4.set_title('Surface roughness I: Range of offsets from linear plane (90-10th) with r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax4)
     cbar.set_label('Range (90-10th) of plane offsets (m)')
@@ -569,7 +607,8 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
 
     ax5 = fig.add_subplot(235)
     ax5.grid()
-    cax5 = ax5.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,10], s=0.5, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,10], 10), vmax=np.nanpercentile(pts_seed_stats[:,10], 90), linewidth=0)
+    #cax5 = ax5.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=0.5, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
+    cax5 = ax5.imshow(dz_range7525i, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(dz_range7525i, 10), vmax=np.nanpercentile(dz_range7525i, 90))
     ax5.set_title('Surface roughness II: Range of offsets from linear plane (75-25th) with r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax5)
     cbar.set_label('Range (75-25th) of plane offsets (m)')
@@ -579,7 +618,8 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
 
     ax6 = fig.add_subplot(236)
     ax6.grid()
-    cax6 = ax6.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,10], s=0.5, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,10], 10), vmax=np.nanpercentile(pts_seed_stats[:,10], 90), linewidth=0)
+    #cax6 = ax6.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,10], s=0.5, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,10], 10), vmax=np.nanpercentile(pts_seed_stats[:,10], 90), linewidth=0)
+    cax6 = ax6.imshow(dz_stdi, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(dz_stdi, 10), vmax=np.nanpercentile(dz_stdi, 90))
     ax6.set_title('Surface roughness III: Std. deviation of lidar points from plane with r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax6)
     cbar.set_label('Std. deviation (m)')
@@ -593,7 +633,7 @@ print('done.')
 
 nrlidar_pts_stats_png = '_nrlidar_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
 pcl_nrlidar_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + nrlidar_pts_stats_png)
-print('Generating figure for number of lidar measurement: %s... '%os.path.basename(pcl_nrlidar_pts_fig_overview_fn))
+print('Generating figure for number of lidar measurement: %s... '%os.path.basename(pcl_nrlidar_pts_fig_overview_fn), end='', flush=True)
 if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
     fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
     fig.clf()
@@ -613,14 +653,14 @@ print('done.')
 
 slope_pts_stats_png = '_slope_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
 pcl_slope_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + slope_pts_stats_png)
-print('Generating figure for slope of fitted plane: %s... '%os.path.basename(pcl_slope_pts_fig_overview_fn))
+print('Generating figure for slope of fitted plane: %s... '%os.path.basename(pcl_slope_pts_fig_overview_fn), end='', flush=True)
 if os.path.exists(pcl_slope_pts_fig_overview_fn) == False:
     fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
     fig.clf()
     
     ax3 = fig.add_subplot(111)
     ax3.grid()
-    cax3 = ax3.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=1, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
+    cax3 = ax3.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,14], s=1, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(pts_seed_stats[:,14], 10), vmax=np.nanpercentile(pts_seed_stats[:,14], 90), linewidth=0)
     ax3.set_title('Slope of fitted plane for each sphere (r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax3)
     cbar.set_label('Slope (m/m)')
@@ -633,7 +673,7 @@ print('done.')
 
 sroughness9010p_pts_stats_png = '_sroughness9010p_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
 pcl_sroughness9010p_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + sroughness9010p_pts_stats_png)
-print('Generating figure for range off offsets from linear plane (90-10th p): %s... '%os.path.basename(pcl_sroughness9010p_pts_fig_overview_fn))
+print('Generating figure for range off offsets from linear plane (90-10th p): %s... '%os.path.basename(pcl_sroughness9010p_pts_fig_overview_fn), end='', flush=True)
 if os.path.exists(pcl_sroughness9010p_pts_fig_overview_fn) == False:
     fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
     fig.clf()
@@ -653,14 +693,14 @@ print('done.')
 
 sroughness7525p_pts_stats_png = '_sroughness7525p_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
 pcl_sroughness7525p_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + sroughness7525p_pts_stats_png)
-print('Generating figure for range off offsets from linear plane (75-25th p): %s... '%os.path.basename(pcl_sroughness7525p_pts_fig_overview_fn))
+print('Generating figure for range off offsets from linear plane (75-25th p): %s... '%os.path.basename(pcl_sroughness7525p_pts_fig_overview_fn), end='', flush=True)
 if os.path.exists(pcl_sroughness7525p_pts_fig_overview_fn) == False:
     fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
     fig.clf()
     
     ax4 = fig.add_subplot(111)
     ax4.grid()
-    cax4 = ax4.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,12], s=1, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(pts_seed_stats[:,12], 10), vmax=np.nanpercentile(pts_seed_stats[:,12], 90), linewidth=0)
+    cax4 = ax4.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=1, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
     ax4.set_title('Surface roughness II: Range of offsets from linear plane (75-25th perc., inner quartile range) with r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax4)
     cbar.set_label('Range (75-25th perc.) of plane offsets (m)')
@@ -673,7 +713,7 @@ print('done.')
 
 stddev_pts_stats_png = '_stddev_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
 pcl_stddev_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + stddev_pts_stats_png)
-print('Generating figure for std. deviation of points from fitted plane: %s... '%os.path.basename(pcl_stddev_pts_fig_overview_fn))
+print('Generating figure for std. deviation of points from fitted plane: %s... '%os.path.basename(pcl_stddev_pts_fig_overview_fn), end='', flush=True)
 if os.path.exists(pcl_stddev_pts_fig_overview_fn) == False:
     fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
     fig.clf()
