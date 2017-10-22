@@ -1,0 +1,24 @@
+<OGRVRTDataSource>
+	<OGRVRTLayer name="Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_seed_pts_stats_raster_1.00m_radius_2.00m.vrt">
+		<SrcDataSource>Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_seed_pts_stats_raster_1.00m_radius_2.00m.csv</SrcDataSource>
+		<SrcLayer>Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_seed_pts_stats_raster_1.00m_radius_2.00m</SrcLayer>
+		<LayerSRS>EPSG:26911</LayerSRS>
+		<GeometryType>wkbPoint</GeometryType>
+		<GeometryField encoding="PointFromColumns" x="4MeanX" y="5MeanY"/>
+			<Field name="1SeedX" type="Real" width="8" precision="7"/>
+			<Field name="2SeedY" type="Real" width="8" precision="7"/>
+			<Field name="3SeedZ" type="Real" width="8" precision="7"/>
+			<Field name="4MeanX" type="Real" width="8" precision="7"/>
+			<Field name="5MeanY" type="Real" width="8" precision="7"/>
+			<Field name="6MeanZ" type="Real" width="8" precision="7"/>
+			<Field name="7Z_min" type="Real" width="8" precision="7"/>
+			<Field name="8Z_max" type="Real" width="8" precision="7"/>
+			<Field name="9Dz_mean" type="Real" width="8" precision="7"/>
+			<Field name="10Dz_med" type="Real" width="8" precision="7"/>
+			<Field name="11Dz_std" type="Real" width="8" precision="7"/>
+			<Field name="12Dz_range" type="Real" width="8" precision="7"/>
+			<Field name="13Dz_9010p" type="Real" width="8" precision="7"/>
+			<Field name="14Pl_slp" type="Real" width="8" precision="7"/>
+			<Field name="15Nr_lidar" type="Real" width="8"/>
+	</OGRVRTLayer>
+</OGRVRTDataSource>
