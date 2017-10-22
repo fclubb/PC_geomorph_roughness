@@ -427,11 +427,6 @@ if os.path.exists(nrlidari_tif_fn) == False or os.path.exists(da_stdi_tif_fn) ==
     idx_nonan = np.where(np.isnan(pts_seed_stats[:,3])==False)
     points = np.hstack((pts_seed_stats[idx_nonan,3].T, pts_seed_stats[idx_nonan,4].T))
     
-    #interpolate Dz_mean
-    #dz_meani = interpolate.griddata(points, pts_seed_stats[idx_nonan,8].T, (xx,yy), method='cubic')
-    #dz_meani = dz_meani[:,:,0]
-    
-    
     #interpolate nr_lidar_measurements
     if os.path.exists(nrlidari_tif_fn) == False:
         nr_lidari = interpolate.griddata(points, pts_seed_stats[idx_nonan,15].T, (xx,yy), method='cubic')
@@ -441,8 +436,6 @@ if os.path.exists(nrlidari_tif_fn) == False or os.path.exists(da_stdi_tif_fn) ==
         nr_lidari = np.array(ds.GetRasterBand(1).ReadAsArray())
         ds = None
 
-        
-    
     if os.path.exists(da_stdi_tif_fn) == False:
         dz_stdi = interpolate.griddata(points, pts_seed_stats[idx_nonan,10].T, (xx,yy), method='cubic')
         dz_stdi = dz_stdi[:,:,0]
