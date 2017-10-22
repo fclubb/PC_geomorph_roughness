@@ -1,4 +1,0 @@
-ERROR 1: Failed to create directory 
-for shapefile datastore.
-
-ERROR 1: ESRI Shapefile driver failed to create 
