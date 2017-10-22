@@ -7,33 +7,44 @@ Output includes a set of shapefile and geotiffs that show statistics of the PC w
 
 
 # Installation
-This is a Python 3.5 code that will run on any OS, which supports the packages. It runs and has been tested on Linux (Ubuntu/Debian), Windows 10, and Mac OS X. You will need several packages for python to run this code. These are standard packages and are included in many distributionss. If you use conda, you can install the required packages (using Python 3.5):
+This is a Python 3.5 code that will run on any OS, which supports the packages. It runs and has been tested on Linux (Ubuntu/Debian), Windows 10, and Mac OS X. You will need several packages for python to run this code. These are standard packages and are included in many distributionss. If you use [conda](https://conda.io/docs/index.html), you can install the required packages (using Python 3.5):
 ```
 conda create -n py35 python=3.5 scipy pandas numpy matplotlib gdal scikit-image gdal ipython python=3.5 spyder h5py
 ```
 
 You can active this environment with ```source activate py35```.
 
-You don't need ipython or spyder to run this code and you can remove these repositories, but they usually come in handy. Also, if you plan to store and process large PC datasets, it may come in handy storing the processed data in compressed HDF5 or H5 files. However, for some installations, the above installed h5py does not contain the gzip compression (or any compression). Update installation with:
+You don't need ipython or spyder to run this code and you can remove these repositories in the command line above, but they usually come in handy. Also, if you plan to store and process large PC datasets, it may come in handy storing the processed data in compressed HDF5 or H5 files. However, for some installations, the above installed h5py does not contain the gzip compression (or any compression). Update installation with:
 ```
 source activate py35
 conda install -y -c conda-forge h5py
 ```
 
-Also, in order to read and write zipped LAS files (LAZ) files, install lastools. These will come in handy. Note that if you have installed pdal, you usually don't need this:
+In order to read and write zipped LAS files (LAZ) files, install lastools. These will come in handy. Note that if you have installed pdal, you usually don't need this:
 ```
+source activate py35
 conda install -y -c conda-forge lastools
 ```
 
-Last, install a fast and simple LAS/LAZ reader/writer. You can do similar steps through lastools, but this interface is fairly simple to use:
+Install a fast and simple LAS/LAZ reader/writer. You can do similar steps through lastools, but this interface is fairly simple to use:
 ```
+source activate py35
 pip install laspy
 ```
+
+This code uses [pykdtree](https://github.com/storpipfugl/pykdtree). This is significantly faster for generating and querying the KDtree and will increase processing speed, especially yf you plan to process large point clouds and if you have a multi-core system available.
+```
+source activate py35
+conda install -c conda-forge pykdtree
+
+```
+
 
 # Command line parameters
 The code can be run from the command line with
 ```
 python pc_geomorph_roughness.py
+
 ```
 
 Parameters to be chosen include (can also be listed with '''python pc_geomorph_roughness.py -h''':
