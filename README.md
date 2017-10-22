@@ -1,4 +1,4 @@
-# PC plane roughness
+# PC Geomorph roughness
 Detrending Point Cloud (PC) data with slope and calculating topographic roughness and curvature from PCs.
 
 The code reads in a ground-classified PC from a LAS/LAZ file and calculates several geomorphology-relevant metrics on the PC. Input files can be from lidar or SfM PC, but should be ground-classified. The algorithm allows defining a radius which is used to fit a linear plane through the point cloud to detrend the data (i.e., normalize the point cloud with mean elevation of 0). These data are used to calculate deviations from the mean (roughness) and identify rills, arroyos, incised canyons, and other forms of erosion processes. By varying the radius over which the plane is fitted, several scales of the landscape can be analyzed (similar to varying radii of topographic relief).  The algorithm choses seed points from the PC with a user-defined spacing (for example 1m) and calculated statistics for each seed point with a given radius (for example 2m).
@@ -33,10 +33,10 @@ pip install laspy
 # Command line parameters
 The code can be run from the command line with
 ```
-python pc_plane_roughness.py
+python pc_geomorph_roughness.py
 ```
 
-Parameters to be chosen include (can also be listed with '''python pc_plane_roughness.py -h''':
+Parameters to be chosen include (can also be listed with '''python pc_geomorph_roughness.py -h''':
 ## Required Parameters
 + -i or --inlas: LAS/LAZ file with point-cloud data. Ideally, this file contains only ground points (class == 2)
 + -r_m or --raster_m: Raster spacing for subsampling seed points on LAS/LAZ PC. Usually 0.5 to 2 m, default = 1.
@@ -59,7 +59,7 @@ Parameters to be chosen include (can also be listed with '''python pc_plane_roug
 In order to generate a 1-m raster file which contains PC information from a radius of 2 m for each 1-m step (seed points, default parameters), you can use:
 
 ```
-python pc_plane_roughness.py -i Pozo_USGS_UTM11_NAD83_all_color_cl2.las -r_m 1 -srd_m 2
+python pc_geomorph_roughness.py -i Pozo_USGS_UTM11_NAD83_all_color_cl2.las -r_m 1 -srd_m 2
 ```
 
 Additional examples with generated output are included in [examples](examples/README.md)

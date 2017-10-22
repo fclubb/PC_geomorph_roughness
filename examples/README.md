@@ -10,14 +10,14 @@ Make sure to start the environment containg all necessary modules, e.g. through
 source activate py35
 ```
 
-On the input LAZ, we will run the python code with (make sure to use the proper directory where your python code pc_plane_roughness.py is stored or set the PATH accordingly). The command assumes that you are in the directory containing the LAZ file. It will take about ~1 minute to run on a file with ~1M points:
+On the input LAZ, we will run the python code with (make sure to use the proper directory where your python code pc_geomorph_roughness.py is stored or set the PATH accordingly). The command assumes that you are in the directory containing the LAZ file. It will take about ~1 minute to run on a file with ~1M points:
 ```
-python /home/bodo/Dropbox/soft/github/PC_plane_roughness/pc_plane_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 2 --epsg_code 26911
+python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 2 --epsg_code 26911
 ```
 Make sure to set the EPSG Code (in this case NAD83, UTM Zone 11) so that output shapefiles and geotiff files have the proper geographic coordinates. Explore the outputs in the directories figures, geotif.
 
 Subsequent runs will be faster, because there is no need to sort through the point cloud and generate the KDTree again. Experiment with different radii for the slope normalization and roughness calculation. Note that output filesnames will be automatically adjusted:
 ```
-python /home/bodo/Dropbox/soft/github/PC_plane_roughness/pc_plane_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 3 --epsg_code 26911
-python /home/bodo/Dropbox/soft/github/PC_plane_roughness/pc_plane_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 4 --epsg_code 26911
+python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 3 --epsg_code 26911
+python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 4 --epsg_code 26911
 ```
