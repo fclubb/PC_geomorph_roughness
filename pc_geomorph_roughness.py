@@ -10,8 +10,9 @@ Created on Thu Oct 19 17:22:03 2017
 from laspy.file import File
 import numpy as np, os, argparse, pickle, h5py, subprocess, gdal, osr, datetime
 from numpy.linalg import svd
-from scipy import spatial
+#from pykdtree.kdtree import KDTree
 from scipy import interpolate
+from scipy import spatial
 import matplotlib as mpl
 #mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -20,7 +21,6 @@ import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
 import matplotlib.cm as cm
 from mpl_toolkits.mplot3d import Axes3D
-
 
 def drawSphere(xCenter, yCenter, zCenter, r):
     #draw sphere
@@ -86,7 +86,7 @@ if args.slope_sphere_radius_m == 0:
     args.slope_sphere_radius_m = args.sphere_radius_m
 
 if args.shapefile_out == '':
-    args.outlas = os.path.join(args.outputdir, os.path.basename(args.inlas).split('.')[0] + '_shp_%0.2fm_rsphere%0.2fm_EPSG%d.shp'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
+    args.shapefile_out = os.path.join(args.outputdir, os.path.basename(args.inlas).split('.')[0] + '_shp_%0.2fm_rsphere%0.2fm_EPSG%d.shp'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
 
 if os.path.exists(os.path.join(args.outputdir, 'log')) == False:
     os.mkdir(os.path.join(args.outputdir, 'log'))
@@ -104,9 +104,8 @@ if os.path.exists(geotif_dir) == False:
 nrlidari_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_nrlidar.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
 da_stdi_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_stddev.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
 dz_range9010i_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_da_range9010.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
+dz_range7525i_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_da_range7525.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
 plane_slopei_tif_fn = os.path.join(geotif_dir, os.path.basename(args.inlas).split('.')[0] + '_%0.2fm_rsphere%0.2fm_EPSG%d_planeslope.tif'%(args.raster_m,args.sphere_radius_m, args.epsg_code))
-
-
 
 ### Loading data and filtering
 print('Loading input file: %s'%args.inlas)
@@ -134,15 +133,14 @@ print('done.')
 
 ### cKDTree setup and calculation
 #Generate KDTree for fast searching
-#cKDTree is faster than KDTree
-#pykdtree would improve performance, especially for large datasets, but not implemented yet
+#cKDTree is faster than KDTree, pyKDTree is fast then cKDTree
 print('Generating XY-cKDTree... ',end='', flush=True)
 pcl_xyg_ckdtree_fn = os.path.join(pickle_dir, os.path.basename(args.inlas).split('.')[0] + '_xyg_cKDTree.pickle')
 if os.path.exists(pcl_xyg_ckdtree_fn):
     pcl_xyg_ckdtree = pickle.load(open( pcl_xyg_ckdtree_fn, "rb" ))
 else:
     pcl_xyg_ckdtree = spatial.cKDTree(pcl_xyg, leafsize=10)
-    pickle.dump(pcl_xyg_ckdtree,open(pcl_xyg_ckdtree_fn,'wb'))
+    pickle.dump(pcl_xyg_ckdtree, open(pcl_xyg_ckdtree_fn,'wb'))
 print('done.')
 
 print('Generating XYZ-cKDTree... ',end='',flush=True)
@@ -174,7 +172,7 @@ y_coords = np.arange(y_min.round(), y_max.round(), args.raster_m) + args.raster_
 #create combination of all coordinates (this is using lists and could be optimized)
 xy_coordinates = np.array([(x,y) for x in x_coords for y in y_coords])
 
-#using the 2D kdtree to find the points that are closest to the defined 2D raster overlay
+#using the 2D KDTree to find the points that are closest to the defined 2D raster overlay
 [pcl_xyg_ckdtree_distance, pcl_xyg_ckdtree_id] = pcl_xyg_ckdtree.query(xy_coordinates, k=1)
 
 #take only points that are within the search radius (may omit some points at the border regions
@@ -183,6 +181,9 @@ pcl_distances_lt_rstep_size = np.where(pcl_xyg_ckdtree_distance <= args.raster_m
 #the following list contains all IDs to the actual lidar points that are closest to the raster overlay. 
 #We will use these points as seed points for determining slope, planes, and point-cloud ranges
 pcl_xyg_ckdtree_id = pcl_xyg_ckdtree_id[pcl_distances_lt_rstep_size]
+
+#remove from memory
+pcl_xyg_ckdtree = None
 
 #now select these points from the 3D pointcloud with X, Y, Z coordinates.
 #We refer to these as seed points from the rstep part of this script
@@ -223,7 +224,7 @@ print('done.')
 #find points from 3D seed / query points  / raster overlay with radius = args.sphere_radius_m
 pickle_fn = '_xyzg_raster_%0.2fm_radius_%0.2fm.pickle'%(args.raster_m, args.sphere_radius_m)
 pcl_xyzg_radius_fn = os.path.join(pickle_dir, os.path.basename(args.inlas).split('.')[0] + pickle_fn)
-print('Querying KDTree with radius %0.2f and storing in pickle: %s... '%(args.sphere_radius_m, pcl_xyzg_radius_fn), end='', flush=True)
+print('Querying cKDTree with radius %0.2f and storing in pickle: %s... '%(args.sphere_radius_m, pcl_xyzg_radius_fn), end='', flush=True)
 if os.path.exists(pcl_xyzg_radius_fn):
     pcl_xyzg_radius = pickle.load(open( pcl_xyzg_radius_fn, "rb" ))
 else:
@@ -235,7 +236,7 @@ print('done.')
 if args.slope_sphere_radius_m != args.sphere_radius_m:    
     pickle_fn = '_xyzg_raster_%0.2fm_radius_%0.2fm.pickle'%(args.raster_m, args.slope_sphere_radius_m)
     pcl_xyzg_radius2_fn = os.path.join(pickle_dir, os.path.basename(args.inlas).split('.')[0] + pickle_fn)
-    print('Querying KDTree with radius %0.2f and storing in pickle: %s... '%(args.slope_sphere_radius_m, pcl_xyzg_radius2_fn), end='', flush=True)
+    print('Querying cKDTree with radius %0.2f and storing in pickle: %s... '%(args.slope_sphere_radius_m, pcl_xyzg_radius2_fn), end='', flush=True)
     if os.path.exists(pcl_xyzg_radius2_fn):
         pcl_xyzg_radius_slope = pickle.load(open( pcl_xyzg_radius2_fn, "rb" ))
     else:
@@ -250,92 +251,101 @@ elif args.slope_sphere_radius_m == args.sphere_radius_m:
 ### Calculate statistics for each sphere: normalization, elevation range, std. dev., mean, median
 #this should be parallized with pool
 pcl_xyzg_radius_nr = len(pcl_xyzg_radius)
-pts_seed_stats = np.empty((pcl_xyzg_radius_nr,16))
+pts_seed_stats = np.empty((pcl_xyzg_radius_nr,17))
 pcl_xyzg_radius_nre = np.sum([len(x) for x in pcl_xyzg_radius])
 dxyzn = np.empty((pcl_xyzg_radius_nre, 4))
 counter = 0
-print('Normalizing spheres and calculating statistics.')
-for i in range(pcl_xyzg_radius_nr):
-    if i == 0 or np.mod(i,10000) == 0:
-        print('\nat seed point %s of: %s '%("{:,}".format(pcl_xyzg_radius_nr), "{:,}".format(i)), end='', flush=True)
-    elif np.mod(i,1000) == 0:
-        print('%s '%"{:,}".format(i), end='', flush=True)
+#generate seed HDF filename and load data from HDF file if available
+seed_pts_stats_hdf = '_seed_pts_stats_raster_%0.2fm_radius_%0.2fm.h5'%(args.raster_m, args.sphere_radius_m)
+pcl_seed_pts_stats_hdf_fn = os.path.join(args.outputdir, os.path.basename(args.inlas).split('.')[0] + seed_pts_stats_hdf)
+if os.path.exists(pcl_seed_pts_stats_hdf_fn) == False:
+    print('Normalizing spheres and calculating statistics... ')
+    for i in range(pcl_xyzg_radius_nr):
+        if i == 0 or np.mod(i,10000) == 0:
+            print('\nat seed point %s of: %s '%("{:,}".format(pcl_xyzg_radius_nr), "{:,}".format(i)), end='', flush=True)
+        elif np.mod(i,1000) == 0:
+            print('%s '%"{:,}".format(i), end='', flush=True)
+            
+        pts_xyz = pcl_xyzg[pcl_xyzg_radius[i]]
+        pts_xyz_slope = pcl_xyzg[pcl_xyzg_radius_slope[i]]
+            
+        nr_pts_xyz = pts_xyz.shape[0]
+        if pts_xyz.shape[0] < 5:
+            print('\nLess than 5 points, plane fitting not meaningful for i = %s'%"{:,}".format(i))
+            pts_xyz_meanpt = np.nan
+            pts_xyz_normal = np.nan
+            pts_seed_stats[i,:] = [pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2], 
+                       np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, nr_pts_xyz, np.nan]
+        else:
+            pts_xyz_meanpt, pts_xyz_normal = planeFit(pts_xyz_slope.T)
+            #goodness of fit?
+            
+            #calculate curvature
+            plane_curvature = np.nan
+            
+            #normalize /detrend points with plane
+            d = -pts_xyz_meanpt.dot(pts_xyz_normal)
+            z = (-pts_xyz_normal[0] * pts_xyz[:,0] - pts_xyz_normal[1] * pts_xyz[:,1] - d) * 1. /pts_xyz_normal[2]
+            plane_slope = pts_xyz_normal[2]
+            #calculate offset for each point from plane
+            dz = pts_xyz[:,2] - z
         
-    pts_xyz = pcl_xyzg[pcl_xyzg_radius[i]]
-    pts_xyz_slope = pcl_xyzg[pcl_xyzg_radius_slope[i]]
+            #store dz (offset from plane) into intensity field of LAS file (scale by 10)
+            #all offsets less than 1cm or set to 0
+            #pcl_ig[pcl_xyzg_radius[i]] = (np.power(2,16)/2 + (dz*10)).astype('int16')
+            #alternatively could store data in color field, these are 3x8bit values
+            
+            #stack points into X, Y, Z, delta-Z for each point 
+            dxyzn[range(counter, counter+pts_xyz.shape[0]),:] = np.vstack([np.vstack((pts_xyz[:,0], pts_xyz[:,1], pts_xyz[:,2], dz)).T])
+            counter = counter + pts_xyz.shape[0]
         
-    nr_pts_xyz = pts_xyz.shape[0]
-    if pts_xyz.shape[0] < 5:
-        print('\nLess than 5 points, plane fitting not meaningful for i = %s'%"{:,}".format(i))
-        pts_xyz_meanpt = np.nan
-        pts_xyz_normal = np.nan
-        pts_seed_stats[i,:] = [pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2], 
-                   np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, nr_pts_xyz, np.nan]
-    else:
-        pts_xyz_meanpt, pts_xyz_normal = planeFit(pts_xyz_slope.T)
-        #goodness of fit?
-        
-        #calculate curvature
-        plane_curvature = np.nan
-        
-        #normalize /detrend points with plane
-        d = -pts_xyz_meanpt.dot(pts_xyz_normal)
-        z = (-pts_xyz_normal[0] * pts_xyz[:,0] - pts_xyz_normal[1] * pts_xyz[:,1] - d) * 1. /pts_xyz_normal[2]
-        plane_slope = pts_xyz_normal[2]
-        #calculate offset for each point from plane
-        dz = pts_xyz[:,2] - z
+            #for each seed point, store relevant point statistics. Columns are:
+            #Seed-X, Seed-Y, Seed-Z, Mean-X, Mean-Y, Mean-Z, Z-min, Z-max, Dz-mean, Dz-median,  Dz-std.dev, Dz-range, Dz-90-10th percentile range, slope of fitted plane, nr. of lidar points, curvature
+            pts_seed_stats[i,:] = [pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2], 
+                           pts_xyz_meanpt[0], pts_xyz_meanpt[1], pts_xyz_meanpt[2], 
+                           np.min(pts_xyz, axis=0)[2], np.max(pts_xyz, axis=0)[2], dz.mean(), np.median(dz), np.std(dz), dz.max()-dz.min(), \
+                           np.percentile(dz, 90)-np.percentile(dz,10), np.percentile(dz, 75)-np.percentile(dz,25), plane_slope, nr_pts_xyz, plane_curvature]
     
-        #store dz (offset from plane) into intensity field of LAS file (scale by 10)
-        #all offsets less than 1cm or set to 0
-        #pcl_ig[pcl_xyzg_radius[i]] = (np.power(2,16)/2 + (dz*10)).astype('int16')
-        #alternatively could store data in color field, these are 3x8bit values
+        #for calculating curvature, see here: https://gis.stackexchange.com/questions/37066/how-to-calculate-terrain-curvature
         
-        #stack points into X, Y, Z, delta-Z for each point 
-        dxyzn[range(counter, counter+pts_xyz.shape[0]),:] = np.vstack([np.vstack((pts_xyz[:,0], pts_xyz[:,1], pts_xyz[:,2], dz)).T])
-        counter = counter + pts_xyz.shape[0]
-    
-        #for each seed point, store relevant point statistics. Columns are:
-        #Seed-X, Seed-Y, Seed-Z, Mean-X, Mean-Y, Mean-Z, Z-min, Z-max, Dz-mean, Dz-median,  Dz-std.dev, Dz-range, Dz-90-10th percentile range, slope of fitted plane, nr. of lidar points, curvature
-        pts_seed_stats[i,:] = [pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2], 
-                       pts_xyz_meanpt[0], pts_xyz_meanpt[1], pts_xyz_meanpt[2], 
-                       np.min(pts_xyz, axis=0)[2], np.max(pts_xyz, axis=0)[2], dz.mean(), np.median(dz), np.std(dz), dz.max()-dz.min(), np.percentile(dz, 90)-np.percentile(dz,10), plane_slope, nr_pts_xyz, plane_curvature]
-
-#for calculating curvature, see here: https://gis.stackexchange.com/questions/37066/how-to-calculate-terrain-curvature
-
-### Creating figure for every seed points - very time intensive and currently commented out    
-#    #calcuate z coordinate of seed point with respect to plane - only needed if creating figure
-#    z_seed_pt = (-pts_xyz_normal[0] * pcl_xyzg_rstep_seed[i,0] - pts_xyz_normal[1] * pcl_xyzg_rstep_seed[i,1] - d) * 1. /pts_xyz_normal[2]
-#    
-#    #calculate mesh for plotting plane
-#    xx, yy = np.meshgrid(np.linspace(np.nanmin(pts_xyz[:,0]),np.nanmax(pts_xyz[:,0]), num=10), np.linspace(np.nanmin(pts_xyz[:,1]),np.nanmax(pts_xyz[:,1]), num=10))
-#    z = (-pts_xyz_normal[0] * xx - pts_xyz_normal[1] * yy - d) * 1. /pts_xyz_normal[2]
-#    
-#    fig = plt.figure(figsize=(16.53,11.69), dpi=300)
-#    fig.clf()
-#    ax1 = fig.add_subplot(211, projection='3d')
-#    pts_ax = ax1.scatter(pts_xyz[:,0], pts_xyz[:,1], pts_xyz[:,2], c=pts_xyz[:,2], marker='o')
-#    ax1.scatter(pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2], c='k', marker='x', s=250)
-#    ax1.plot_surface(xx, yy, z, alpha = 0.5, linewidth=0, antialiased=True, cstride=1)
-#    (xs, ys, zs) = drawSphere(pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2], args.sphere_radius_m)
-#    plt.grid('on')
-#    cbar = fig.colorbar(pts_ax)
-#    cbar.set_label('Point Elevation (m)')
-#    ax1.plot_wireframe(xs, ys, zs, color='k', linewidths=0.1)
-#    ax1.set_xlabel('UTM-X')
-#    ax1.set_ylabel('UTM-Y')
-#    ax1.set_zlabel('UTM-Z')
-#    ax1.set_title('3D view of selected lidar points (colored) and lidar seed point (black star) (ground only)')
-#    
-#    ax2 = fig.add_subplot(212, projection='3d')
-#    ax2.scatter(pts_xyz[:,0], pts_xyz[:,1], dz, c=dz, marker='o')
-#    ax2.scatter(pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2]-z_seed_pt, c='k', marker='x', s=250)
-#    ax2.set_xlabel('UTM-X')
-#    ax2.set_ylabel('UTM-Y')
-#    ax2.set_zlabel('UTM-Z')
-#    ax2.set_title('3D view of normalized lidar points (colored) and lidar seed point (black star) (ground only)')
-#    seed_fig_fname = 'seed_pts_fig_%d.png'%i     
-#    fig.savefig(seed_fig_fname, bbox_inches='tight')
-
+        ### Creating figure for every seed points - very time intensive and currently commented out    
+        #    #calcuate z coordinate of seed point with respect to plane - only needed if creating figure
+        #    z_seed_pt = (-pts_xyz_normal[0] * pcl_xyzg_rstep_seed[i,0] - pts_xyz_normal[1] * pcl_xyzg_rstep_seed[i,1] - d) * 1. /pts_xyz_normal[2]
+        #    
+        #    #calculate mesh for plotting plane
+        #    xx, yy = np.meshgrid(np.linspace(np.nanmin(pts_xyz[:,0]),np.nanmax(pts_xyz[:,0]), num=10), np.linspace(np.nanmin(pts_xyz[:,1]),np.nanmax(pts_xyz[:,1]), num=10))
+        #    z = (-pts_xyz_normal[0] * xx - pts_xyz_normal[1] * yy - d) * 1. /pts_xyz_normal[2]
+        #    
+        #    fig = plt.figure(figsize=(16.53,11.69), dpi=300)
+        #    fig.clf()
+        #    ax1 = fig.add_subplot(211, projection='3d')
+        #    pts_ax = ax1.scatter(pts_xyz[:,0], pts_xyz[:,1], pts_xyz[:,2], c=pts_xyz[:,2], marker='o')
+        #    ax1.scatter(pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2], c='k', marker='x', s=250)
+        #    ax1.plot_surface(xx, yy, z, alpha = 0.5, linewidth=0, antialiased=True, cstride=1)
+        #    (xs, ys, zs) = drawSphere(pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2], args.sphere_radius_m)
+        #    plt.grid('on')
+        #    cbar = fig.colorbar(pts_ax)
+        #    cbar.set_label('Point Elevation (m)')
+        #    ax1.plot_wireframe(xs, ys, zs, color='k', linewidths=0.1)
+        #    ax1.set_xlabel('UTM-X')
+        #    ax1.set_ylabel('UTM-Y')
+        #    ax1.set_zlabel('UTM-Z')
+        #    ax1.set_title('3D view of selected lidar points (colored) and lidar seed point (black star) (ground only)')
+        #    
+        #    ax2 = fig.add_subplot(212, projection='3d')
+        #    ax2.scatter(pts_xyz[:,0], pts_xyz[:,1], dz, c=dz, marker='o')
+        #    ax2.scatter(pcl_xyzg_rstep_seed[i,0], pcl_xyzg_rstep_seed[i,1], pcl_xyzg_rstep_seed[i,2]-z_seed_pt, c='k', marker='x', s=250)
+        #    ax2.set_xlabel('UTM-X')
+        #    ax2.set_ylabel('UTM-Y')
+        #    ax2.set_zlabel('UTM-Z')
+        #    ax2.set_title('3D view of normalized lidar points (colored) and lidar seed point (black star) (ground only)')
+        #    seed_fig_fname = 'seed_pts_fig_%d.png'%i     
+        #    fig.savefig(seed_fig_fname, bbox_inches='tight')
+    print('done.')
+else:
+    hdf_in = h5py.File(pcl_seed_pts_stats_hdf_fn,'r')
+    pts_seed_stats = np.array(hdf_in['pts_seed_stats'])
+    print('Statistics loaded from file: %s'%os.path.basename(pcl_seed_pts_stats_hdf_fn))
 
 ### Write to LAS file (modiy to include LAZ files)
 #outFile = File(args.outlas, mode='w', header=inFile.header)
@@ -343,24 +353,29 @@ for i in range(pcl_xyzg_radius_nr):
 #outFile.intensity = pcl_ig
 #outFile.close()    
 
+print('Writing seed points and statistics to HDF, CSV, and shapefiles... ', end='', flush=True)
 ### Write Seed point statistics to file
-seed_pts_stats_hdf = '_seed_pts_stats_raster_%0.2fm_radius_%0.2fm.h5'%(args.raster_m, args.sphere_radius_m)
-pcl_seed_pts_stats_hdf_fn = os.path.join(args.outputdir, os.path.basename(args.inlas).split('.')[0] + seed_pts_stats_hdf)
 if os.path.exists(pcl_seed_pts_stats_hdf_fn) == False:
     hdf_out = h5py.File(pcl_seed_pts_stats_hdf_fn,'w')
     hdf_out.attrs['help'] = 'Array from pc_dh_roughness.py with raster size %0.2fm and sphere radius %0.2fm'%(args.raster_m, args.sphere_radius_m)
     pts_seeds_std_fc = hdf_out.create_dataset('pts_seed_stats',data=pts_seed_stats, chunks=True, compression="gzip", compression_opts=7)
-    pts_seeds_std_fc.attrs['help'] = 'Seed-X, Seed-Y, Seed-Z, Mean-X, Mean-Y, Mean-Z, Z-min, Z-max, Dz-mean, Dz-median,  Dz-std.dev, Dz-range, Dz-90-10thp, PlaneSlope, NrLidarPoints'
+    pts_seeds_std_fc.attrs['help'] = 'Seed-X, Seed-Y, Seed-Z, Mean-X, Mean-Y, Mean-Z, Z-min, Z-max, Dz-mean, Dz-median,  Dz-std.dev, Dz-range, Dz-90-10thp, Dz-75-25thp, PlaneSlope, NrLidarPoints'
     hdf_out.close()
 
 #write csv
-header_str='1SeedX, 2SeedY, 3SeedZ, 4MeanX, 5MeanY, 6MeanZ, 7Z_min, 8Z_max, 9Dz_mean, 10Dz_med,  11Dz_std, 12Dz_range, 13Dz_9010p, 14_Pl_slp, 15Nr_lidar'
+header_str='1SeedX, 2SeedY, 3SeedZ, 4MeanX, 5MeanY, 6MeanZ, 7Z_min, 8Z_max, 9Dz_mean, 10Dz_med,  11Dz_std, 12Dz_range, 13Dz_9010p, 14Dz_7525p, 15_Pl_slp, 16Nr_lidar'
 seed_pts_stats_csv = '_seed_pts_stats_raster_%0.2fm_radius_%0.2fm.csv'%(args.raster_m, args.sphere_radius_m)
 pcl_seed_pts_stats_csv_fn = os.path.join(args.outputdir, os.path.basename(args.inlas).split('.')[0] + seed_pts_stats_csv)
 seed_pts_stats_vrt = '_seed_pts_stats_raster_%0.2fm_radius_%0.2fm.vrt'%(args.raster_m, args.sphere_radius_m)
 pcl_seed_pts_stats_vrt_fn = os.path.join(args.outputdir, os.path.basename(args.inlas).split('.')[0] + seed_pts_stats_vrt)
+idxnan = np.where(np.isnan(pts_seed_stats))
 if os.path.exists(pcl_seed_pts_stats_csv_fn) == False:
-    np.savetxt(pcl_seed_pts_stats_csv_fn, pts_seed_stats, fmt='%.4f', delimiter=',', header=header_str)
+    #before writing to CSV file, replace all np.nan in pts_seed_stats with -9999
+    pts_seed_stats_nonan = np.copy(pts_seed_stats)
+    pts_seed_stats_nonan[idxnan] = -9999.
+    np.savetxt(pcl_seed_pts_stats_csv_fn, pts_seed_stats_nonan, fmt='%.4f', delimiter=',', header=header_str)
+pts_seed_stats_nonan = None
+idxnan = None
 
 # write VRT for shapefile generation
 vrt_f = open(pcl_seed_pts_stats_vrt_fn,'w')
@@ -384,8 +399,9 @@ vrt_f.write('\t\t\t<Field name="10Dz_med" type="Real" width="8" precision="7"/>\
 vrt_f.write('\t\t\t<Field name="11Dz_std" type="Real" width="8" precision="7"/>\n')
 vrt_f.write('\t\t\t<Field name="12Dz_range" type="Real" width="8" precision="7"/>\n')
 vrt_f.write('\t\t\t<Field name="13Dz_9010p" type="Real" width="8" precision="7"/>\n')
-vrt_f.write('\t\t\t<Field name="14Pl_slp" type="Real" width="8" precision="7"/>\n')
-vrt_f.write('\t\t\t<Field name="15Nr_lidar" type="Real" width="8"/>\n')
+vrt_f.write('\t\t\t<Field name="14Dz_7525p" type="Real" width="8" precision="7"/>\n')
+vrt_f.write('\t\t\t<Field name="15Pl_slp" type="Real" width="8" precision="7"/>\n')
+vrt_f.write('\t\t\t<Field name="16Nr_lidar" type="Real" width="8"/>\n')
 #vrt_f.write('\t\t\t<Field name="16Curv" type="Real" width="8" precision="7"/>\n')
 vrt_f.write('\t</OGRVRTLayer>\n')
 vrt_f.write('</OGRVRTDataSource>\n')
@@ -399,102 +415,141 @@ if os.path.exists(args.shapefile_out) == False:
     with open(logfile_fname, 'w') as out, open(logfile_error_fname, 'w') as err:
         subprocess_p = subprocess.Popen(cmd, stdout=out, stderr=err)
         subprocess_p.wait()
+print('done.')
 
 ### Interpolate to equally-spaced grid and generate GeoTIFF output
-print('Inerpolating seed points (mean-X, mean-Y) to geotiff rasters... ',end='', flush=True)
-x = np.arange(x_min.round(), x_max.round(), args.raster_m)
-y = np.arange(y_min.round(), y_max.round(), args.raster_m)
-xx,yy = np.meshgrid(x,y)
-idx_nonan = np.where(np.isnan(pts_seed_stats[:,3])==False)
-points = np.hstack((pts_seed_stats[idx_nonan,3].T, pts_seed_stats[idx_nonan,4].T))
+if os.path.exists(nrlidari_tif_fn) == False or os.path.exists(da_stdi_tif_fn) == False or \
+    os.path.exists(dz_range9010i_tif_fn) == False or os.path.exists(plane_slopei_tif_fn) == False:
+    print('\nInterpolating seed points (mean-X, mean-Y) to geotiff rasters... ',end='', flush=True)
+    x = np.arange(x_min.round(), x_max.round(), args.raster_m)
+    y = np.arange(y_min.round(), y_max.round(), args.raster_m)
+    xx,yy = np.meshgrid(x,y)
+    idx_nonan = np.where(np.isnan(pts_seed_stats[:,3])==False)
+    points = np.hstack((pts_seed_stats[idx_nonan,3].T, pts_seed_stats[idx_nonan,4].T))
+    
+    #interpolate nr_lidar_measurements
+    if os.path.exists(nrlidari_tif_fn) == False:
+        nr_lidari = interpolate.griddata(points, pts_seed_stats[idx_nonan,15].T, (xx,yy), method='cubic')
+        nr_lidari = nr_lidari[:,:,0]
+    else:
+        ds = gdal.Open(nrlidari_tif_fn)
+        nr_lidari = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
 
-#interpolate Dz_mean
-#dz_meani = interpolate.griddata(points, pts_seed_stats[idx_nonan,8].T, (xx,yy), method='cubic')
-#dz_meani = dz_meani[:,:,0]
+    if os.path.exists(da_stdi_tif_fn) == False:
+        dz_stdi = interpolate.griddata(points, pts_seed_stats[idx_nonan,10].T, (xx,yy), method='cubic')
+        dz_stdi = dz_stdi[:,:,0]
+    else:
+        ds = gdal.Open(da_stdi_tif_fn)
+        dz_stdi = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
 
-#interpolate Dz_mean
-dz_stdi = interpolate.griddata(points, pts_seed_stats[idx_nonan,10].T, (xx,yy), method='cubic')
-dz_stdi = dz_stdi[:,:,0]
+    #interpolate Dz_range 90-10 percentile
+    if os.path.exists(dz_range9010i_tif_fn) == False:
+        dz_range9010i = interpolate.griddata(points, pts_seed_stats[idx_nonan,12].T, (xx,yy), method='cubic')
+        dz_range9010i = dz_range9010i[:,:,0]
+    else:
+        ds = gdal.Open(dz_range9010i_tif_fn)
+        dz_range9010i = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
+    
+    #interpolate Dz_range 75-25 percentile
+    if os.path.exists(dz_range7525i_tif_fn) == False:
+        dz_range7525i = interpolate.griddata(points, pts_seed_stats[idx_nonan,13].T, (xx,yy), method='cubic')
+        dz_range7525i = dz_range7525i[:,:,0]
+    else:
+        ds = gdal.Open(dz_range7525i_tif_fn)
+        dz_range7525i = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
+    
+    #interpolate Plane_slope
+    if os.path.exists(plane_slopei_tif_fn) == False:
+        plane_slopei = interpolate.griddata(points, pts_seed_stats[idx_nonan,14].T, (xx,yy), method='cubic')
+        plane_slopei = plane_slopei[:,:,0]
+    else:
+        ds = gdal.Open(plane_slopei_tif_fn)
+        plane_slopei = np.array(ds.GetRasterBand(1).ReadAsArray())
+        ds = None
+    print('done.')
 
-#interpolate nr_lidar_measurements
-nr_lidari = interpolate.griddata(points, pts_seed_stats[idx_nonan,14].T, (xx,yy), method='cubic')
-nr_lidari = nr_lidari[:,:,0]
+if os.path.exists(nrlidari_tif_fn) == False or os.path.exists(da_stdi_tif_fn) == False or \
+    os.path.exists(dz_range9010i_tif_fn) == False or os.path.exists(plane_slopei_tif_fn) == False or \
+    args.shapefile_out == False:
+    x = np.arange(x_min.round(), x_max.round(), args.raster_m)
+    y = np.arange(y_min.round(), y_max.round(), args.raster_m)
+    xx,yy = np.meshgrid(x,y)
 
-#interpolate Dz_range
-#dz_rangei = interpolate.griddata(points, pts_seed_stats[idx_nonan,11].T, (xx,yy), method='cubic')
-#dz_rangei = dz_rangei[:,:,0]
-
-#interpolate Dz_range
-dz_range9010i = interpolate.griddata(points, pts_seed_stats[idx_nonan,12].T, (xx,yy), method='cubic')
-dz_range9010i = dz_range9010i[:,:,0]
-
-#interpolate Plane_slope
-plane_slopei = interpolate.griddata(points, pts_seed_stats[idx_nonan,13].T, (xx,yy), method='cubic')
-plane_slopei = plane_slopei[:,:,0]
-print('done.')
-
-print('Writing shapefile and geotiff rasters... ',end='', flush=True)
-nrows,ncols = np.shape(nr_lidari)
-xres = (x.max()-x.min())/float(ncols)
-yres = (y.max()-y.min())/float(nrows)
-geotransform=(x.min(),xres,0,y.min(),0, yres) 
+    print('Writing shapefile and geotiff rasters... ',end='', flush=True)
+    nrows,ncols = np.shape(xx)
+    xres = (x.max()-x.min())/float(ncols)
+    yres = (y.max()-y.min())/float(nrows)
+    geotransform=(x.min(),xres,0,y.min(),0, yres) 
  
-if os.path.exists(nrlidari_tif_fn) == False:
-    output_raster = gdal.GetDriverByName('GTiff').Create(nrlidari_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
-    output_raster.SetGeoTransform(geotransform)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(args.epsg_code)
-    output_raster.SetProjection( srs.ExportToWkt() )
-    output_raster.GetRasterBand(1).WriteArray(nr_lidari) 
-    output_raster.FlushCache()
-    output_raster=None
+    if os.path.exists(nrlidari_tif_fn) == False:
+        output_raster = gdal.GetDriverByName('GTiff').Create(nrlidari_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+        output_raster.SetGeoTransform(geotransform)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(args.epsg_code)
+        output_raster.SetProjection( srs.ExportToWkt() )
+        output_raster.GetRasterBand(1).WriteArray(nr_lidari) 
+        output_raster.FlushCache()
+        output_raster=None
+    
+    if os.path.exists(da_stdi_tif_fn) == False:
+        output_raster = gdal.GetDriverByName('GTiff').Create(da_stdi_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+        output_raster.SetGeoTransform(geotransform)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(args.epsg_code)
+        output_raster.SetProjection( srs.ExportToWkt() )
+        output_raster.GetRasterBand(1).WriteArray(dz_stdi) 
+        output_raster.FlushCache()
+        output_raster=None
+    
+    if os.path.exists(dz_range9010i_tif_fn) == False:
+        output_raster = gdal.GetDriverByName('GTiff').Create(dz_range9010i_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+        output_raster.SetGeoTransform(geotransform)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(args.epsg_code)
+        output_raster.SetProjection( srs.ExportToWkt() )
+        output_raster.GetRasterBand(1).WriteArray(dz_range9010i) 
+        output_raster.FlushCache()
+        output_raster=None
+    
+    if os.path.exists(dz_range7525i_tif_fn) == False:
+        output_raster = gdal.GetDriverByName('GTiff').Create(dz_range7525i_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+        output_raster.SetGeoTransform(geotransform)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(args.epsg_code)
+        output_raster.SetProjection( srs.ExportToWkt() )
+        output_raster.GetRasterBand(1).WriteArray(dz_range7525i) 
+        output_raster.FlushCache()
+        output_raster=None
 
-if os.path.exists(da_stdi_tif_fn) == False:
-    output_raster = gdal.GetDriverByName('GTiff').Create(da_stdi_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
-    output_raster.SetGeoTransform(geotransform)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(args.epsg_code)
-    output_raster.SetProjection( srs.ExportToWkt() )
-    output_raster.GetRasterBand(1).WriteArray(dz_stdi) 
-    output_raster.FlushCache()
-    output_raster=None
-
-if os.path.exists(dz_range9010i_tif_fn) == False:
-    output_raster = gdal.GetDriverByName('GTiff').Create(dz_range9010i_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
-    output_raster.SetGeoTransform(geotransform)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(args.epsg_code)
-    output_raster.SetProjection( srs.ExportToWkt() )
-    output_raster.GetRasterBand(1).WriteArray(dz_range9010i) 
-    output_raster.FlushCache()
-    output_raster=None
-
-if os.path.exists(plane_slopei_tif_fn) == False:
-    output_raster = gdal.GetDriverByName('GTiff').Create(plane_slopei_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
-    output_raster.SetGeoTransform(geotransform)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(args.epsg_code)
-    output_raster.SetProjection( srs.ExportToWkt() )
-    output_raster.GetRasterBand(1).WriteArray(plane_slopei) 
-    output_raster.FlushCache()
-    output_raster=None
-# Could use gdal_grid to generate TIF from VRT/Shapefile:
-#gdal_grid -zfield "15Nr_lidar" -outsize 271 280 -a linear:radius=2.0:nodata=-9999 -of GTiff -ot Int16 Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_seed_pts_stats_raster_1.00m_radius_1.50m.vrt Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_seed_pts_stats_raster_1.00m_radius_1.50m_nrlidar2.tif --config GDAL_NUM_THREADS ALL_CPUS -co COMPRESS=DEFLATE -co ZLEVEL=9
-
-if os.path.exists(args.shapefile_out) == False:
-    cmd = ['ogr2ogr', args.shapefile_out, pcl_seed_pts_stats_vrt_fn]
-    logfile_fname = os.path.join(args.outputdir, 'log') + '/ogr2ogr_' + datetime.datetime.now().strftime('%Y%b%d_%H%M%S') + '.txt'
-    logfile_error_fname = os.path.join(args.outputdir, 'log') + '/ogr2ogr_' + datetime.datetime.now().strftime('%Y%b%d_%H%M%S') + '_err.txt'
-    with open(logfile_fname, 'w') as out, open(logfile_error_fname, 'w') as err:
-        subprocess_p = subprocess.Popen(cmd, stdout=out, stderr=err)
-        subprocess_p.wait()
-print('done.')
+    if os.path.exists(plane_slopei_tif_fn) == False:
+        output_raster = gdal.GetDriverByName('GTiff').Create(plane_slopei_tif_fn,ncols, nrows, 1 ,gdal.GDT_Float32,['TFW=YES', 'COMPRESS=DEFLATE', 'ZLEVEL=9'])  # Open the file, see here for information about compression: http://gis.stackexchange.com/questions/1104/should-gdal-be-set-to-produce-geotiff-files-with-compression-which-algorithm-sh
+        output_raster.SetGeoTransform(geotransform)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(args.epsg_code)
+        output_raster.SetProjection( srs.ExportToWkt() )
+        output_raster.GetRasterBand(1).WriteArray(plane_slopei) 
+        output_raster.FlushCache()
+        output_raster=None
+    # Could use gdal_grid to generate TIF from VRT/Shapefile:
+    #gdal_grid -zfield "15Nr_lidar" -outsize 271 280 -a linear:radius=2.0:nodata=-9999 -of GTiff -ot Int16 Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_seed_pts_stats_raster_1.00m_radius_1.50m.vrt Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_seed_pts_stats_raster_1.00m_radius_1.50m_nrlidar2.tif --config GDAL_NUM_THREADS ALL_CPUS -co COMPRESS=DEFLATE -co ZLEVEL=9
+    
+    if os.path.exists(args.shapefile_out) == False:
+        cmd = ['ogr2ogr', args.shapefile_out, pcl_seed_pts_stats_vrt_fn]
+        logfile_fname = os.path.join(args.outputdir, 'log') + '/ogr2ogr_' + datetime.datetime.now().strftime('%Y%b%d_%H%M%S') + '.txt'
+        logfile_error_fname = os.path.join(args.outputdir, 'log') + '/ogr2ogr_' + datetime.datetime.now().strftime('%Y%b%d_%H%M%S') + '_err.txt'
+        with open(logfile_fname, 'w') as out, open(logfile_error_fname, 'w') as err:
+            subprocess_p = subprocess.Popen(cmd, stdout=out, stderr=err)
+            subprocess_p.wait()
+    print('done.')
 
 ### Plot output to figures
-#pcl_ig_float = ((pcl_ig-(np.power(2,16)/2))/10).astype('float')
 seed_pts_stats_png = '_seed_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
 pcl_seed_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + seed_pts_stats_png)
-print('Generating overview figure %s... '%os.path.basename(pcl_seed_pts_fig_overview_fn))
+print('Generating overview figure %s... '%os.path.basename(pcl_seed_pts_fig_overview_fn), end='', flush=True)
 if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
     fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
     #fig = plt.figure(figsize=(11.69,8.27), dpi=150)
@@ -506,23 +561,25 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
     ax1.set_title('Lidar seed point elevation with raster=%0.2fm'%args.raster_m,y=1.05)
     cbar = fig.colorbar(cax1)
     cbar.set_label('Max-Min elevation in sphere (m)')
-    ax1.set_xlabel('UTM-X x1e5 (m)')
-    ax1.set_ylabel('UTM-Y x1e5 (m)')
+    ax1.set_xlabel('UTM-X (m)')
+    ax1.set_ylabel('UTM-Y (m)')
     ax1.axis('equal')
 
     ax2 = fig.add_subplot(232)
     ax2.grid()
-    cax2 = ax2.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,14], s=0.5, cmap=plt.get_cmap('gnuplot'), linewidth=0)
+    cax2 = ax2.imshow(nr_lidari,cmap=plt.get_cmap('gnuplot'))
+#            ax2.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,15], s=0.5, cmap=plt.get_cmap('gnuplot'), linewidth=0)    
     ax2.set_title('Nr. of lidar measurements for each seed point',y=1.05)
     cbar = fig.colorbar(cax2)
     cbar.set_label('#')
     ax2.set_xlabel('UTM-X (m)')
     ax2.set_ylabel('UTM-Y (m)')
     ax2.axis('equal')
-
+    
     ax3 = fig.add_subplot(233)
     ax3.grid()
-    cax3 = ax3.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=0.5, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
+    #cax3 = ax3.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=0.5, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
+    cax3 = ax3.imshow(plane_slopei, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(plane_slopei, 10), vmax=np.nanpercentile(plane_slopei, 90))
     ax3.set_title('Slope of fitted plane for each sphere (r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax3)
     cbar.set_label('Slope (m/m)')
@@ -532,7 +589,8 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
 
     ax4 = fig.add_subplot(234)
     ax4.grid()
-    cax4 = ax4.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,12], s=0.5, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(pts_seed_stats[:,12], 10), vmax=np.nanpercentile(pts_seed_stats[:,12], 90), linewidth=0)
+    #cax4 = ax4.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,12], s=0.5, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(pts_seed_stats[:,12], 10), vmax=np.nanpercentile(pts_seed_stats[:,12], 90), linewidth=0)
+    cax4 = ax4.imshow(dz_range9010i, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(dz_range9010i, 10), vmax=np.nanpercentile(dz_range9010i, 90))
     ax4.set_title('Surface roughness I: Range of offsets from linear plane (90-10th) with r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax4)
     cbar.set_label('Range (90-10th) of plane offsets (m)')
@@ -542,17 +600,19 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
 
     ax5 = fig.add_subplot(235)
     ax5.grid()
-    cax5 = ax5.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,10], s=0.5, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,10], 10), vmax=np.nanpercentile(pts_seed_stats[:,10], 90), linewidth=0)
-    ax5.set_title('Surface roughness II: Std. deviation of lidar points from plane with r=%0.2f)'%args.sphere_radius_m,y=1.05)
+    #cax5 = ax5.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=0.5, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
+    cax5 = ax5.imshow(dz_range7525i, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(dz_range7525i, 10), vmax=np.nanpercentile(dz_range7525i, 90))
+    ax5.set_title('Surface roughness II: Range of offsets from linear plane (75-25th) with r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax5)
-    cbar.set_label('Std. deviation (m)')
+    cbar.set_label('Range (75-25th) of plane offsets (m)')
     ax5.set_xlabel('UTM-X (m)')
     ax5.set_ylabel('UTM-Y (m)')
     ax5.axis('equal')
 
     ax6 = fig.add_subplot(236)
     ax6.grid()
-    cax6 = ax6.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,10], s=0.5, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,10], 10), vmax=np.nanpercentile(pts_seed_stats[:,10], 90), linewidth=0)
+    #cax6 = ax6.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,10], s=0.5, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,10], 10), vmax=np.nanpercentile(pts_seed_stats[:,10], 90), linewidth=0)
+    cax6 = ax6.imshow(dz_stdi, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(dz_stdi, 10), vmax=np.nanpercentile(dz_stdi, 90))
     ax6.set_title('Surface roughness III: Std. deviation of lidar points from plane with r=%0.2f)'%args.sphere_radius_m,y=1.05)
     cbar = fig.colorbar(cax6)
     cbar.set_label('Std. deviation (m)')
@@ -562,6 +622,108 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
 
     fig.savefig(pcl_seed_pts_fig_overview_fn, bbox_inches='tight')
     plt.close()
+print('done.')
+
+nrlidar_pts_stats_png = '_nrlidar_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
+pcl_nrlidar_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + nrlidar_pts_stats_png)
+print('Generating figure for number of lidar measurement: %s... '%os.path.basename(pcl_nrlidar_pts_fig_overview_fn), end='', flush=True)
+if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
+    fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
+    fig.clf()
+    
+    ax2 = fig.add_subplot(111)
+    ax2.grid()
+    cax2 = ax2.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,14], s=1, cmap=plt.get_cmap('gnuplot'), linewidth=0)
+    ax2.set_title('Nr. of lidar measurements for each seed point',y=1.05)
+    cbar = fig.colorbar(cax2)
+    cbar.set_label('#')
+    ax2.set_xlabel('UTM-X (m)')
+    ax2.set_ylabel('UTM-Y (m)')
+    ax2.axis('equal')
+    fig.savefig(pcl_nrlidar_pts_fig_overview_fn, bbox_inches='tight')
+    plt.close()
+print('done.')
+
+slope_pts_stats_png = '_slope_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
+pcl_slope_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + slope_pts_stats_png)
+print('Generating figure for slope of fitted plane: %s... '%os.path.basename(pcl_slope_pts_fig_overview_fn), end='', flush=True)
+if os.path.exists(pcl_slope_pts_fig_overview_fn) == False:
+    fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
+    fig.clf()
+    
+    ax3 = fig.add_subplot(111)
+    ax3.grid()
+    cax3 = ax3.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,14], s=1, cmap=plt.get_cmap('seismic'), vmin=np.nanpercentile(pts_seed_stats[:,14], 10), vmax=np.nanpercentile(pts_seed_stats[:,14], 90), linewidth=0)
+    ax3.set_title('Slope of fitted plane for each sphere (r=%0.2f)'%args.sphere_radius_m,y=1.05)
+    cbar = fig.colorbar(cax3)
+    cbar.set_label('Slope (m/m)')
+    ax3.set_xlabel('UTM-X (m)')
+    ax3.set_ylabel('UTM-Y (m)')
+    ax3.axis('equal')
+    fig.savefig(pcl_slope_pts_fig_overview_fn, bbox_inches='tight')
+    plt.close()
+print('done.')
+
+sroughness9010p_pts_stats_png = '_sroughness9010p_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
+pcl_sroughness9010p_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + sroughness9010p_pts_stats_png)
+print('Generating figure for range off offsets from linear plane (90-10th p): %s... '%os.path.basename(pcl_sroughness9010p_pts_fig_overview_fn), end='', flush=True)
+if os.path.exists(pcl_sroughness9010p_pts_fig_overview_fn) == False:
+    fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
+    fig.clf()
+    
+    ax4 = fig.add_subplot(111)
+    ax4.grid()
+    cax4 = ax4.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,12], s=1, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(pts_seed_stats[:,12], 10), vmax=np.nanpercentile(pts_seed_stats[:,12], 90), linewidth=0)
+    ax4.set_title('Surface roughness I: Range of offsets from linear plane (90-10th) with r=%0.2f)'%args.sphere_radius_m,y=1.05)
+    cbar = fig.colorbar(cax4)
+    cbar.set_label('Range (90-10th) of plane offsets (m)')
+    ax4.set_xlabel('UTM-X (m)')
+    ax4.set_ylabel('UTM-Y (m)')
+    ax4.axis('equal')
+    fig.savefig(pcl_sroughness9010p_pts_fig_overview_fn, bbox_inches='tight')
+    plt.close()
+print('done.')
+
+sroughness7525p_pts_stats_png = '_sroughness7525p_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
+pcl_sroughness7525p_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + sroughness7525p_pts_stats_png)
+print('Generating figure for range off offsets from linear plane (75-25th p): %s... '%os.path.basename(pcl_sroughness7525p_pts_fig_overview_fn), end='', flush=True)
+if os.path.exists(pcl_sroughness7525p_pts_fig_overview_fn) == False:
+    fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
+    fig.clf()
+    
+    ax4 = fig.add_subplot(111)
+    ax4.grid()
+    cax4 = ax4.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,13], s=1, cmap=plt.get_cmap('PiYG'), vmin=np.nanpercentile(pts_seed_stats[:,13], 10), vmax=np.nanpercentile(pts_seed_stats[:,13], 90), linewidth=0)
+    ax4.set_title('Surface roughness II: Range of offsets from linear plane (75-25th perc., inner quartile range) with r=%0.2f)'%args.sphere_radius_m,y=1.05)
+    cbar = fig.colorbar(cax4)
+    cbar.set_label('Range (75-25th perc.) of plane offsets (m)')
+    ax4.set_xlabel('UTM-X (m)')
+    ax4.set_ylabel('UTM-Y (m)')
+    ax4.axis('equal')
+    fig.savefig(pcl_sroughness7525p_pts_fig_overview_fn, bbox_inches='tight')
+    plt.close()
+print('done.')
+
+stddev_pts_stats_png = '_stddev_pts_overview_raster_%0.2fm_radius_%0.2fm.png'%(args.raster_m, args.sphere_radius_m)
+pcl_stddev_pts_fig_overview_fn = os.path.join(figure_dir, os.path.basename(args.inlas).split('.')[0] + stddev_pts_stats_png)
+print('Generating figure for std. deviation of points from fitted plane: %s... '%os.path.basename(pcl_stddev_pts_fig_overview_fn), end='', flush=True)
+if os.path.exists(pcl_stddev_pts_fig_overview_fn) == False:
+    fig = plt.figure(figsize=(16.53*1.5,11.69*1.5), dpi=150)
+    fig.clf()
+    
+    ax5 = fig.add_subplot(111)
+    ax5.grid()
+    cax5 = ax5.scatter(pts_seed_stats[:,0], pts_seed_stats[:,1], c=pts_seed_stats[:,10], s=1, cmap=plt.get_cmap('jet'), vmin=np.nanpercentile(pts_seed_stats[:,10], 10), vmax=np.nanpercentile(pts_seed_stats[:,10], 90), linewidth=0)
+    ax5.set_title('Surface roughness III: Std. deviation of lidar points from plane with r=%0.2f)'%args.sphere_radius_m,y=1.05)
+    cbar = fig.colorbar(cax5)
+    cbar.set_label('Std. deviation (m)')
+    ax5.set_xlabel('UTM-X (m)')
+    ax5.set_ylabel('UTM-Y (m)')
+    ax5.axis('equal')
+    fig.savefig(pcl_stddev_pts_fig_overview_fn, bbox_inches='tight')
+    plt.close()
+print('done.')
+
 ### 3D plots, currently turned off
 #    ax1 = fig.add_subplot(211, projection='3d')
 #    pcl_points = ax1.scatter(dxyzn[:,0], dxyzn[:,1], dxyzn[:,2], c=dxyzn[:,3], s=dxyzn[:,3], marker='o')
@@ -582,5 +744,4 @@ if os.path.exists(pcl_seed_pts_fig_overview_fn) == False:
 #    ax2.set_title('3D view of seed lidar points (sphere radius=%0.2f m) (colored) with range of point heights for each seed point (normalized)'%args.sphere_radius_m)
 #    fig.savefig(pcl_seed_pts_fig_range_fn, bbox_inches='tight')
 #    plt.close()
-print('done.')
 

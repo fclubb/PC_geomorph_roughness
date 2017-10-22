@@ -18,6 +18,7 @@ Make sure to set the EPSG Code (in this case NAD83, UTM Zone 11) so that output 
 
 Subsequent runs will be faster, because there is no need to sort through the point cloud and generate the KDTree again. Experiment with different radii for the slope normalization and roughness calculation. Note that output filesnames will be automatically adjusted:
 ```
-python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 3 --epsg_code 26911
-python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 4 --epsg_code 26911
+python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 5 --epsg_code 26911
+python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 10 --epsg_code 26911
 ```
+*Note that pickle files are not included in these examples and on github*
