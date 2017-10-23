@@ -32,6 +32,12 @@ source activate py35
 pip install laspy
 ```
 
+For some color rescaling (e.g., writing points to LAS files with new colors), scikit-image comes in handy:
+```
+source activate py35
+conda install -y scikit-image
+```
+
 This code uses [scipy.spatial.cKDTree](https://docs.scipy.org/doc/scipy-0.19.1/reference/generated/scipy.spatial.cKDTree.html). The KDTree search could be made much faster with [pykdtree](https://github.com/storpipfugl/pykdtree). However, pyKDTree doesn't allow to easily save the tree - so, if you intend to run this repeatedly iterating through various search radii, the cKDTree implementation is usefull. For very large point clouds, the pyKDTree algorithm is significantly faster for generating and querying the KDtree and will increase processing speed. To install pyKDTree:
 ```
 source activate py35
@@ -53,7 +59,7 @@ Parameters to be chosen include (can also be listed with '''python pc_geomorph_r
 + -r_m or --raster_m: Raster spacing for subsampling seed points on LAS/LAZ PC. Usually 0.5 to 2 m, default = 1.
 + -srd_m or --sphere_radius_m: Radius of sphere used for selecting lidar points around seed points. These points are used for range, roughness, and density calculations. Default radius 1.5m, i.e., points within a sphere of 3m are chosen.
 + -slope_srd_m or --slope_sphere_radius_m: Radius of sphere used for fitting a linear plane and calculating slope and detrending data (slope normalization). By default this is similar to the radius used for calculation roughness indices (srd_m), but this can be set to a different value. For example, larger radii use the slope of larger area to detrend data.
-
++ -shp_clp or --shapefile_clip: Name / path of shapefile to clip interpolated output. Because the gridding procedure may introduce artefacts at the boundaries, a shapefile will be used to clip data to its original area. This is likely the same shapefile that has been used to generate the las data in the first place.
 ## Suggested Parameters
 + -epsg or --epsg_code: EPSG code (integer) to define projection information. This should be the same EPSG code as the input data (no re-projection included yet) and can be taken from LAS/LAZ input file. Add this to ensure that output shapefile and GeoTIFFs are properly geocoded.
 
