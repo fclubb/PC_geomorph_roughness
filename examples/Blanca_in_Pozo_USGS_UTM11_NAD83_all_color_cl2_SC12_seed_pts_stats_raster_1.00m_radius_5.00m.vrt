@@ -20,6 +20,11 @@
 			<Field name="13Dz_9010p" type="Real" width="8" precision="7"/>
 			<Field name="14Dz_7525p" type="Real" width="8" precision="7"/>
 			<Field name="15Pl_slp" type="Real" width="8" precision="7"/>
-			<Field name="16Nr_lidar" type="Real" width="8"/>
+			<Field name="16Pl_res" type="Real" width="8" precision="7"/>
+			<Field name="17Pl_var" type="Real" width="8" precision="7"/>
+			<Field name="18Nr_lidar" type="Real" width="8"/>
+			<Field name="19curv" type="Real" width="8" precision="7"/>
+			<Field name="20curv_gaussian" type="Real" width="8" precision="7"/>
+			<Field name="21curv_res" type="Real" width="8" precision="7"/>
 	</OGRVRTLayer>
 </OGRVRTDataSource>

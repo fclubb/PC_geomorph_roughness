@@ -64,11 +64,11 @@ Parameters to be chosen include (can also be listed with '''python pc_geomorph_r
 + -epsg or --epsg_code: EPSG code (integer) to define projection information. This should be the same EPSG code as the input data (no re-projection included yet) and can be taken from LAS/LAZ input file. Add this to ensure that output shapefile and GeoTIFFs are properly geocoded.
 
 ## Additional Parameters
-+ -o or --outlas: LAS/LAZ file to be created. This has the same dimension and number of points as the input LAS/LAZ file, but replaced color values reflecting roughness calculated over a given radius. Note that this will overwrite existing color information in the output file. *WILL REQUIRE MORE CODING*
++ -o or --outlas: LAS file to be created (currently only LAS files are supported). This has the same dimension and number of points as the input LAS/LAZ file, but replaced color values reflecting roughness calculated over a given radius. Note that this will replace existing color information in the output file.
 + -shape_out or --shapefile_out: Output shapefile storing calculated attributes for seed points only. Default filename will be generated with radius in the filename.
 + -odir --outputdir: Output directory to store plots and pickle files. Default is directory containing LAS/LAZ file.
 + -fig or --figure: Generate figures while processing. This often takes significant amount of time and can be turned off with -fig False.
-+ -color or --store_color_las: Generate a LAS/LAZ file where deviation from the plane are saved in the color attribute of the LAS/LAZ file for every point. *Note* that this will overwrite the color information in the LAS file. Default is False, can be turned on with --store_color True.
++ -color or --store_color_las: Generate a LAS file where deviation from the plane are saved in the color attribute of the LAS file for every point. *Note* that this will replace the color information in the LAS file (but will be saved to separate file). Default is True, can be turned off with --store_color False.
 
 
 # Examples

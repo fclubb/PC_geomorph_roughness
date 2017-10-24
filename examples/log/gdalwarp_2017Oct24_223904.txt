@@ -1,0 +1,3 @@
+Creating output file that is 272P x 282L.
+Processing input file geotif/Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_1.00m_rsphere5.00m_EPSG26911_planeslope.tif.
+0...10...20...30...40...50...60...70...80...90...100 - done.

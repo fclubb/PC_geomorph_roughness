@@ -1,0 +1,52 @@
+Driver: GTiff/GeoTIFF
+Files: geotif/Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_1.00m_rsphere10.00m_EPSG26911_planeslope.tif
+Size is 272, 282
+Coordinate System is:
+PROJCS["NAD83 / UTM zone 11N",
+    GEOGCS["NAD83",
+        DATUM["North_American_Datum_1983",
+            SPHEROID["GRS 1980",6378137,298.257222101,
+                AUTHORITY["EPSG","7019"]],
+            TOWGS84[0,0,0,0,0,0,0],
+            AUTHORITY["EPSG","6269"]],
+        PRIMEM["Greenwich",0,
+            AUTHORITY["EPSG","8901"]],
+        UNIT["degree",0.0174532925199433,
+            AUTHORITY["EPSG","9122"]],
+        AUTHORITY["EPSG","4269"]],
+    PROJECTION["Transverse_Mercator"],
+    PARAMETER["latitude_of_origin",0],
+    PARAMETER["central_meridian",-117],
+    PARAMETER["scale_factor",0.9996],
+    PARAMETER["false_easting",500000],
+    PARAMETER["false_northing",0],
+    UNIT["metre",1,
+        AUTHORITY["EPSG","9001"]],
+    AXIS["Easting",EAST],
+    AXIS["Northing",NORTH],
+    AUTHORITY["EPSG","26911"]]
+Origin = (238933.061767578125000,3765381.734436037018895)
+Pixel Size = (0.996096442727482,-0.995512184521831)
+Metadata:
+  AREA_OR_POINT=Area
+Image Structure Metadata:
+  COMPRESSION=DEFLATE
+  INTERLEAVE=BAND
+Corner Coordinates:
+Upper Left  (  238933.062, 3765381.734) (119d49'35.22"W, 33d59'47.78"N)
+Lower Left  (  238933.062, 3765101.000) (119d49'34.92"W, 33d59'38.67"N)
+Upper Right (  239204.000, 3765381.734) (119d49'24.67"W, 33d59'48.02"N)
+Lower Right (  239204.000, 3765101.000) (119d49'24.37"W, 33d59'38.91"N)
+Center      (  239068.531, 3765241.367) (119d49'29.80"W, 33d59'43.34"N)
+Band 1 Block=272x7 Type=Float32, ColorInterp=Gray
+    Computed Min/Max=-0.980,0.996
+  Minimum=-0.980, Maximum=0.996, Mean=0.881, StdDev=0.186
+0...10...20...30...40...50...60...70...80...90...100 - done.
+  256 buckets from -0.983435 to 1.00003:
+  1 1 1 2 2 35 20 12 26 25 20 41 44 48 28 47 40 30 21 8 20 12 10 7 2 5 4 1 1 0 0 2 0 1 1 0 0 0 0 2 0 0 0 0 0 0 5 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8 8 15 3 6 12 1 12 4 7 5 11 4 12 9 15 21 22 53 38 59 43 92 131 148 178 221 350 343 514 623 833 982 1284 1675 2160 1894 2275 2587 3087 3333 3126 4027 3975 4015 2920 2127 1572 1220 968 1124 1294 524 360 
+  NoData Value=-9999
+  Metadata:
+    STATISTICS_MAXIMUM=0.9961541891098
+    STATISTICS_MEAN=0.88058502048568
+    STATISTICS_MINIMUM=-0.97956073284149
+    STATISTICS_STDDEV=0.18554483111115
