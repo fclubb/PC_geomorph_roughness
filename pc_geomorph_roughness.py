@@ -258,7 +258,7 @@ if args.outputdir == '':
     args.outputdir = os.path.dirname(args.inlas)
 
 if args.outlas == '':
-    args.outlas = os.path.join(args.outputdir, os.path.basename(args.inlas).split('.')[0] + '_raster_%0.2fm_rsphere%0.2fm.laz'%(args.raster_m,args.sphere_radius_m))
+    args.outlas = os.path.join(args.outputdir, os.path.basename(args.inlas).split('.')[0] + '_raster_%0.2fm_rsphere%0.2fm.las'%(args.raster_m,args.sphere_radius_m))
 
 if args.slope_sphere_radius_m == 0:
     #set to sphere_radius_m
@@ -516,7 +516,7 @@ print('done.')
 ### Write to LAS/LAZ file
 if args.store_color == True:
     if os.path.exists(args.outlas) == False:
-        print('Writing dz values to LAZ file: %s... '%args.outlas, end='', flush=True)    
+        print('Writing dz values to LAS file: %s... '%args.outlas, end='', flush=True)    
         # use dxyzn and find unique points by x, y, z coordinate
         xyz_points = dxyzn[:,:-1]
         xyz_points_unique = np.array(list(set(tuple(p) for p in xyz_points)))
