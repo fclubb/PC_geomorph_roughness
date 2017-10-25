@@ -26,5 +26,6 @@
 			<Field name="19curv" type="Real" width="8" precision="7"/>
 			<Field name="20curv_gaussian" type="Real" width="8" precision="7"/>
 			<Field name="21curv_res" type="Real" width="8" precision="7"/>
+			<Field name="22density" type="Real" width="8" precision="7"/>
 	</OGRVRTLayer>
 </OGRVRTDataSource>
