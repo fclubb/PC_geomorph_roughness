@@ -51,7 +51,8 @@ cd ~
 git clone https://github.com/UP-RS-ESP/PC_geomorph_roughness
 
 ```
-You are now ready to run the 
+You are now ready to run the code from the command line.
+
 
 # Command line parameters
 The code can be run from the command line with
