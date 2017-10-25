@@ -14,11 +14,11 @@ On the input LAZ, we will run the python code with (make sure to use the proper 
 ```
 python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 2 --epsg_code 26911 -shp_clp SC12.shp
 ```
-Make sure to set the EPSG Code (in this case NAD83, UTM Zone 11) so that output shapefiles and geotiff files have the proper geographic coordinates. Explore the outputs in the directories figures, geotif.
+Make sure to set the EPSG Code (in this case NAD83, UTM Zone 11) so that output shapefiles and geotiff files have the proper geographic coordinates. Explore the outputs in the directories _figures_ and _geotif_.
 
 Subsequent runs will be faster, because there is no need to sort through the point cloud and generate the KDTree again. Experiment with different radii for the slope normalization and roughness calculation. Note that output filesnames will be automatically adjusted:
 ```
 python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 5 --epsg_code 26911 -shp_clp SC12.shp
 python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py -i Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz -r_m 1 -srd_m 10 --epsg_code 26911 -shp_clp SC12.shp
 ```
-*Note that pickle files are not included in these examples and on github*
+**Note that the directories _log_ and _pickle_ are not include, also the _*.h5_ files are not included in these examples and on github because of their file sizes**

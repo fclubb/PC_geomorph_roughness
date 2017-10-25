@@ -3,7 +3,7 @@ Detrending Point Cloud (PC) data with slope and calculating topographic roughnes
 
 The code reads in a ground-classified PC from a LAS/LAZ file and calculates several geomorphology-relevant metrics on the PC. Input files can be from lidar or SfM PC, but should be ground-classified. The algorithm allows defining a radius which is used to fit a linear plane through the point cloud to detrend the data (i.e., normalize the point cloud with mean elevation of 0). These data are used to calculate deviations from the mean (roughness) and identify rills, arroyos, incised canyons, and other forms of erosion processes. By varying the radius over which the plane is fitted, several scales of the landscape can be analyzed (similar to varying radii of topographic relief).  The algorithm choses seed points from the PC with a user-defined spacing (for example 1m) and calculated statistics for each seed point with a given radius (for example 2m).
 
-Output includes a set of shapefile and geotiffs that show statistics of the PC within that radius at a given interval. Also, CSV and H5 files are created that contain lists of seed point location and statistical results for further analysis in Python or Matlab.
+Output includes a set of shapefile and geotiffs that show statistics of the PC within the given radius. Also, CSV and H5 files are created that contain lists of seed point location and statistical results for further analysis in Python or Matlab.
 
 
 # Installation
@@ -45,6 +45,14 @@ conda install -c conda-forge pykdtree
 
 ```
 
+Last, install the repository into your favorite github directory, for example ~/github:
+```
+cd ~
+git clone https://github.com/UP-RS-ESP/PC_geomorph_roughness
+
+```
+You are now ready to run the code from the command line (see below).
+
 
 # Command line parameters
 The code can be run from the command line with
@@ -64,11 +72,11 @@ Parameters to be chosen include (can also be listed with '''python pc_geomorph_r
 + -epsg or --epsg_code: EPSG code (integer) to define projection information. This should be the same EPSG code as the input data (no re-projection included yet) and can be taken from LAS/LAZ input file. Add this to ensure that output shapefile and GeoTIFFs are properly geocoded.
 
 ## Additional Parameters
-+ -o or --outlas: LAS/LAZ file to be created. This has the same dimension and number of points as the input LAS/LAZ file, but replaced color values reflecting roughness calculated over a given radius. Note that this will overwrite existing color information in the output file. *WILL REQUIRE MORE CODING*
++ -o or --outlas: LAS file to be created (currently only LAS files are supported). This has the same dimension and number of points as the input LAS/LAZ file, but replaced color values reflecting roughness calculated over a given radius. Note that this will replace existing color information in the output file.
 + -shape_out or --shapefile_out: Output shapefile storing calculated attributes for seed points only. Default filename will be generated with radius in the filename.
 + -odir --outputdir: Output directory to store plots and pickle files. Default is directory containing LAS/LAZ file.
 + -fig or --figure: Generate figures while processing. This often takes significant amount of time and can be turned off with -fig False.
-+ -color or --store_color_las: Generate a LAS/LAZ file where deviation from the plane are saved in the color attribute of the LAS/LAZ file for every point. *Note* that this will overwrite the color information in the LAS file. Default is False, can be turned on with --store_color True.
++ -color or --store_color_las: Generate a LAS file where deviation from the plane are saved in the color attribute of the LAS file for every point. *Note* that this will replace the color information in the LAS file (but will be saved to separate file). Default is False, can be turned on with --store_color True.
 
 
 # Examples
