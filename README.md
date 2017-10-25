@@ -51,7 +51,7 @@ cd ~
 git clone https://github.com/UP-RS-ESP/PC_geomorph_roughness
 
 ```
-You are now ready to run the code from the command line.
+You are now ready to run the code from the command line (see below).
 
 
 # Command line parameters
@@ -76,7 +76,7 @@ Parameters to be chosen include (can also be listed with '''python pc_geomorph_r
 + -shape_out or --shapefile_out: Output shapefile storing calculated attributes for seed points only. Default filename will be generated with radius in the filename.
 + -odir --outputdir: Output directory to store plots and pickle files. Default is directory containing LAS/LAZ file.
 + -fig or --figure: Generate figures while processing. This often takes significant amount of time and can be turned off with -fig False.
-+ -color or --store_color_las: Generate a LAS file where deviation from the plane are saved in the color attribute of the LAS file for every point. *Note* that this will replace the color information in the LAS file (but will be saved to separate file). Default is True, can be turned off with --store_color False.
++ -color or --store_color_las: Generate a LAS file where deviation from the plane are saved in the color attribute of the LAS file for every point. *Note* that this will replace the color information in the LAS file (but will be saved to separate file). Default is False, can be turned on with --store_color True.
 
 
 # Examples
