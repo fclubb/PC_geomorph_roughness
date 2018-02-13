@@ -72,7 +72,7 @@ gdal_grid -zfield "18Nr_lidar" -outsize 271 281 -a linear:radius=2.0:nodata=-999
 - several point-cloud views of individual parameters deduced from the raw point cloud (curvature, slope, surface roughness, standard deviation of points from a fitted plane
 
 ### The following geotif files are created in the subdirectory _geotif_:
-There are two groups of geotif files created: one directly from the entire raw pointcloud (_*_raw_*_.tif_) and one from the average of all iterations (_*_iter10_*_.tif_). There are several topographic parameters stored for each seed points with the given radius using the following scheme: 
+There are two groups of geotif files created: one directly from the entire raw pointcloud (_raw_) and one from the average of all iterations (_iter10_). There are several topographic parameters stored for each seed points with the given radius using the following scheme: 
 - slope of fitted plane (_planeslope.tif_), curvature (_curv.tif_), standard deviation of points (_intensity_ieq.tif_)
 - point-cloud density (_density.tif_), nr of lidar points (_nrlidar.tif_)
 - distance from a plane IQR range (_dz_iqr.tif_), maximum distance from a plane (_dzmax.tif_), minimum distance from a plane (_dzmin.tif_), range of 10th and 90th percentile distance from a plane (_dz_range9010.tif_)
