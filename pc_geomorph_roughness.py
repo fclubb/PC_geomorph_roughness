@@ -30,7 +30,7 @@ from skimage import exposure
 ### Command Line Parsing
 parser = argparse.ArgumentParser(description='PointCloud (PC) processing for geomorphologic purposes. Estimates slopes, curvature, local roughness, and other parameters. B. Bookhagen (bodo.bookhagen@uni-potsdam.de), Feb 2018.')
 # Important and required:
-parser.add_argument('-i', '--inlas', type=str, default='',  help='LAS/LAZ file with point-cloud data. Ideally, this file contains only ground points (class == 2)')
+parser.add_argument('--inlas', type=str, default='',  help='LAS/LAZ file with point-cloud data. Ideally, this file contains only ground points (class == 2)')
 parser.add_argument('--raster_m', type=float, default=1,  help='Raster spacing for subsampling seed points on LAS/LAZ PC. Usually 0.5 to 2 m, default = 1.')
 parser.add_argument('--sphere_radius_m', type=float, default=1.5,  help='Radius of sphere used for selecting lidar points around seed points. These points are used for range, roughness, and density calculations. Default radius 1.5m, i.e., points within a sphere of 3m are chosen.')
 parser.add_argument('--slope_sphere_radius_m', type=float, default=0,  help='Radius of sphere used for fitting a linear plane and calculating slope and detrending data (slope normalization). By default this is similar to the radius used for calculation roughness indices (srd_m), but this can be set to a different value. For example, larger radii use the slope of larger area to detrend data.')
@@ -1120,71 +1120,72 @@ dxyzn_nre_pos_array = np.array(np.linspace(0, dxyzn_nre, nr_of_processes), dtype
 ### PC Density adjustment / normalization
 # Get PC density of entire point cloud using a fixed number of neighbors determined by point density of seed points
 
-pc_density_fn = os.path.join(args.outputdir, 'PC_density_stats_n%04d_r%0.2fm.h5'%(dxyzn_max_nre, args.sphere_radius_m))
-if os.path.exists(pc_density_fn) == False:
-    print('\nDensity of complete ground-classified XYZ pointcloud (pcl_xyzg, n=%s points) for %d neighbor points from %2.1f m radius:'%("{:,}".format(int(pcl_xyzg.shape[0])), int(dxyzn_max_nre),args.sphere_radius_m) )
-    pcl_xyzg_p_min, pcl_xyzg_p_median, \
-        pcl_xyzg_density_min, pcl_xyzg_density_median = \
-        pc_density(pcl_xyzg, pcl_xyzg_ckdtree, nn=int(dxyzn_max_nre), show_density_information=1)
-    
-    #write as HDF file
-    print('\nWriting PC density results to HDF... ', end='', flush=True)
-    hdf_out = h5py.File(pc_density_fn,'w')
-    hdf_out.attrs['help'] = 'PC Density and probability (p) for n=%d neighbor points from pc_geomorph_roughness.py: sphere radius %0.2fm'%(dxyzn_max_nre, args.sphere_radius_m) 
-    pcl_xyzg_p_min_fc = hdf_out.create_dataset('pcl_xyzg_p_min',data=pcl_xyzg_p_min, chunks=True, compression="gzip", compression_opts=7)
-    pcl_xyzg_p_min_fc.attrs['help'] = 'Minimum probability for each points'
-    pcl_xyzg_p_median_fc = hdf_out.create_dataset('pcl_xyzg_p_median',data=pcl_xyzg_p_median, chunks=True, compression="gzip", compression_opts=7)
-    pcl_xyzg_p_median_fc.attrs['help'] = 'Median probability for each points'
-    pcl_xyzg_density_min_fc = hdf_out.create_dataset('pcl_xyzg_density_min',data=pcl_xyzg_density_min, chunks=True, compression="gzip", compression_opts=7)
-    pcl_xyzg_density_min_fc.attrs['help'] = 'Minimum density for each points'
-    pcl_xyzg_density_median_fc = hdf_out.create_dataset('pcl_xyzg_density_median',data=pcl_xyzg_density_median, chunks=True, compression="gzip", compression_opts=7)
-    pcl_xyzg_density_median_fc.attrs['help'] = 'Median density for each points'
-    pcl_xyzg_fc = hdf_out.create_dataset('pcl_xyzg',data=pcl_xyzg, chunks=True, compression="gzip", compression_opts=7)
-    pcl_xyzg_fc.attrs['help'] = 'XYZ coordinates of pointcloud'
-    hdf_out.close()
-    print('done.')
-elif os.path.exists(pc_density_fn) == True:
-    hdf_in = h5py.File(pc_density_fn,'r')
-    pcl_xyzg_p_min = np.array(hdf_in['pcl_xyzg_p_min'])
-    pcl_xyzg_density_min = np.array(hdf_in['pcl_xyzg_density_min'])
- 
-# The following is just an example how the random subsampling based on a density can be carried out. 
-# As input is taken the full point cloud and the number of points that each seed point should contain for a given radius.
-# Here we chose half of the minimum number of points for a given density calculated in the previous step (pcl_xyzg_p_min)
-# Probability subsampling using PC density estimates and subsample points based on their probabilities
-nr_of_points = pcl_xyzg.shape[0]/2
-pc_equal_density_fn = os.path.join(args.outputdir, 'PC_equal_density_n%04d_r%0.2fm.h5'%(dxyzn_max_nre, args.sphere_radius_m))
-if os.path.exists(pc_equal_density_fn) == False:
-    print('\nHomogenous subsampling of pointcloud to create equal point density with %s points to %s points'%("{:,}".format(pcl_xyzg.shape[0]), "{:,}".format(int(nr_of_points))) )
-    pcl_xyzg_p_random = pc_random_p_subsampling(pcl_xyzg, pcl_xyzg_p_min, nr_of_points = nr_of_points)
-    #Generate cKDTree for density estimation 
-    print('\nGenerating XYZ-cKDTree for homogenous random point cloud... ',end='',flush=True)
-    pcl_xyzg_p_random_ckdtree = spatial.cKDTree(pcl_xyzg_p_random, leafsize=32)
-    print('done.')
-    #calculate density of pcl_xyzg_p_random:
-    #This shoud give similar density values (min, median, and max. densities, and a relatively low standard deviation of median point distances)
-    print('\nDensity of homogenous random subsampled ground-classified XYZ pointcloud (pcl_xyzg_p_random, n=%s points) for %d neighbor points from %2.1f m radius:'%("{:,}".format(int(nr_of_points)), int(dxyzn_max_nre),args.sphere_radius_m) )
-    _, _, pcl_random_density_min, _ = \
-        pc_density(pcl_xyzg_p_random, pcl_xyzg_p_random_ckdtree, nn=int(dxyzn_max_nre), show_density_information=1)
-    pcl_xyzg_equal_density_radius = pcl_xyzg_p_random_ckdtree.query_ball_point(pcl_xyzg_rstep_seed,r=args.slope_sphere_radius_m, n_jobs=-1)
-    pcl_xyzg_equal_density_radius_slope = pcl_xyzg_equal_density_radius
-    
-    #write as HDF file
-    print('\nWriting PC density results to HDF... ', end='', flush=True)
-    hdf_out = h5py.File(pc_equal_density_fn,'w')
-    hdf_out.attrs['help'] = 'Homogenous PC with equal point density based on random subsampling with %d nr of total points for n=%d neighbor points from pc_geomorph_roughness.py: sphere radius %0.2fm'%(nr_of_points, dxyzn_max_nre, args.sphere_radius_m) 
-    pcl_xyzg_p_random_fc = hdf_out.create_dataset('pcl_xyzg_p_random',data=pcl_xyzg_p_random, chunks=True, compression="gzip", compression_opts=7)
-    pcl_xyzg_p_random_fc.attrs['help'] = 'XYZ coordinates of subsampled PC (homogenous based on probabilities)'
-    pcl_random_density_min_fc = hdf_out.create_dataset('pcl_random_density_min',data=pcl_random_density_min, chunks=True, compression="gzip", compression_opts=7)
-    pcl_random_density_min_fc.attrs['help'] = 'PC density after subsampling'
-    hdf_out.close()
-    print('done.')
-elif os.path.exists(pc_equal_density_fn) == True:
-    hdf_in = h5py.File(pc_equal_density_fn,'r')
-    pcl_xyzg_p_random = np.array(hdf_in['pcl_xyzg_p_random'])
-    pcl_xyzg_p_random_ckdtree = spatial.cKDTree(pcl_xyzg_p_random, leafsize=32)
-    pcl_xyzg_equal_density_radius = pcl_xyzg_p_random_ckdtree.query_ball_point(pcl_xyzg_rstep_seed,r=args.slope_sphere_radius_m, n_jobs=-1)
-    pcl_xyzg_equal_density_radius_slope = pcl_xyzg_equal_density_radius
+if args.nr_random_sampling > 0:
+    pc_density_fn = os.path.join(args.outputdir, 'PC_density_stats_n%04d_r%0.2fm.h5'%(dxyzn_max_nre, args.sphere_radius_m))
+    if os.path.exists(pc_density_fn) == False:
+        print('\nDensity of complete ground-classified XYZ pointcloud (pcl_xyzg, n=%s points) for %d neighbor points from %2.1f m radius:'%("{:,}".format(int(pcl_xyzg.shape[0])), int(dxyzn_max_nre),args.sphere_radius_m) )
+        pcl_xyzg_p_min, pcl_xyzg_p_median, \
+            pcl_xyzg_density_min, pcl_xyzg_density_median = \
+            pc_density(pcl_xyzg, pcl_xyzg_ckdtree, nn=int(dxyzn_max_nre), show_density_information=1)
+        
+        #write as HDF file
+        print('\nWriting PC density results to HDF... ', end='', flush=True)
+        hdf_out = h5py.File(pc_density_fn,'w')
+        hdf_out.attrs['help'] = 'PC Density and probability (p) for n=%d neighbor points from pc_geomorph_roughness.py: sphere radius %0.2fm'%(dxyzn_max_nre, args.sphere_radius_m) 
+        pcl_xyzg_p_min_fc = hdf_out.create_dataset('pcl_xyzg_p_min',data=pcl_xyzg_p_min, chunks=True, compression="gzip", compression_opts=7)
+        pcl_xyzg_p_min_fc.attrs['help'] = 'Minimum probability for each points'
+        pcl_xyzg_p_median_fc = hdf_out.create_dataset('pcl_xyzg_p_median',data=pcl_xyzg_p_median, chunks=True, compression="gzip", compression_opts=7)
+        pcl_xyzg_p_median_fc.attrs['help'] = 'Median probability for each points'
+        pcl_xyzg_density_min_fc = hdf_out.create_dataset('pcl_xyzg_density_min',data=pcl_xyzg_density_min, chunks=True, compression="gzip", compression_opts=7)
+        pcl_xyzg_density_min_fc.attrs['help'] = 'Minimum density for each points'
+        pcl_xyzg_density_median_fc = hdf_out.create_dataset('pcl_xyzg_density_median',data=pcl_xyzg_density_median, chunks=True, compression="gzip", compression_opts=7)
+        pcl_xyzg_density_median_fc.attrs['help'] = 'Median density for each points'
+        pcl_xyzg_fc = hdf_out.create_dataset('pcl_xyzg',data=pcl_xyzg, chunks=True, compression="gzip", compression_opts=7)
+        pcl_xyzg_fc.attrs['help'] = 'XYZ coordinates of pointcloud'
+        hdf_out.close()
+        print('done.')
+    elif os.path.exists(pc_density_fn) == True:
+        hdf_in = h5py.File(pc_density_fn,'r')
+        pcl_xyzg_p_min = np.array(hdf_in['pcl_xyzg_p_min'])
+        pcl_xyzg_density_min = np.array(hdf_in['pcl_xyzg_density_min'])
+     
+    # The following is just an example how the random subsampling based on a density can be carried out. 
+    # As input is taken the full point cloud and the number of points that each seed point should contain for a given radius.
+    # Here we chose half of the minimum number of points for a given density calculated in the previous step (pcl_xyzg_p_min)
+    # Probability subsampling using PC density estimates and subsample points based on their probabilities
+    nr_of_points = pcl_xyzg.shape[0]/2
+    pc_equal_density_fn = os.path.join(args.outputdir, 'PC_equal_density_n%04d_r%0.2fm.h5'%(dxyzn_max_nre, args.sphere_radius_m))
+    if os.path.exists(pc_equal_density_fn) == False:
+        print('\nHomogenous subsampling of pointcloud to create equal point density with %s points to %s points'%("{:,}".format(pcl_xyzg.shape[0]), "{:,}".format(int(nr_of_points))) )
+        pcl_xyzg_p_random = pc_random_p_subsampling(pcl_xyzg, pcl_xyzg_p_min, nr_of_points = nr_of_points)
+        #Generate cKDTree for density estimation 
+        print('\nGenerating XYZ-cKDTree for homogenous random point cloud... ',end='',flush=True)
+        pcl_xyzg_p_random_ckdtree = spatial.cKDTree(pcl_xyzg_p_random, leafsize=32)
+        print('done.')
+        #calculate density of pcl_xyzg_p_random:
+        #This shoud give similar density values (min, median, and max. densities, and a relatively low standard deviation of median point distances)
+        print('\nDensity of homogenous random subsampled ground-classified XYZ pointcloud (pcl_xyzg_p_random, n=%s points) for %d neighbor points from %2.1f m radius:'%("{:,}".format(int(nr_of_points)), int(dxyzn_max_nre),args.sphere_radius_m) )
+        _, _, pcl_random_density_min, _ = \
+            pc_density(pcl_xyzg_p_random, pcl_xyzg_p_random_ckdtree, nn=int(dxyzn_max_nre), show_density_information=1)
+        pcl_xyzg_equal_density_radius = pcl_xyzg_p_random_ckdtree.query_ball_point(pcl_xyzg_rstep_seed,r=args.slope_sphere_radius_m, n_jobs=-1)
+        pcl_xyzg_equal_density_radius_slope = pcl_xyzg_equal_density_radius
+        
+        #write as HDF file
+        print('\nWriting PC density results to HDF... ', end='', flush=True)
+        hdf_out = h5py.File(pc_equal_density_fn,'w')
+        hdf_out.attrs['help'] = 'Homogenous PC with equal point density based on random subsampling with %d nr of total points for n=%d neighbor points from pc_geomorph_roughness.py: sphere radius %0.2fm'%(nr_of_points, dxyzn_max_nre, args.sphere_radius_m) 
+        pcl_xyzg_p_random_fc = hdf_out.create_dataset('pcl_xyzg_p_random',data=pcl_xyzg_p_random, chunks=True, compression="gzip", compression_opts=7)
+        pcl_xyzg_p_random_fc.attrs['help'] = 'XYZ coordinates of subsampled PC (homogenous based on probabilities)'
+        pcl_random_density_min_fc = hdf_out.create_dataset('pcl_random_density_min',data=pcl_random_density_min, chunks=True, compression="gzip", compression_opts=7)
+        pcl_random_density_min_fc.attrs['help'] = 'PC density after subsampling'
+        hdf_out.close()
+        print('done.')
+    elif os.path.exists(pc_equal_density_fn) == True:
+        hdf_in = h5py.File(pc_equal_density_fn,'r')
+        pcl_xyzg_p_random = np.array(hdf_in['pcl_xyzg_p_random'])
+        pcl_xyzg_p_random_ckdtree = spatial.cKDTree(pcl_xyzg_p_random, leafsize=32)
+        pcl_xyzg_equal_density_radius = pcl_xyzg_p_random_ckdtree.query_ball_point(pcl_xyzg_rstep_seed,r=args.slope_sphere_radius_m, n_jobs=-1)
+        pcl_xyzg_equal_density_radius_slope = pcl_xyzg_equal_density_radius
 
 ### Bootstraping and uncertainty estimation for fitting data
 ### Calculate slope and curvature for random point cloud 'pcl_xyzg_p_random' with roughly homogenous point densities
