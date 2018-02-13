@@ -9,7 +9,7 @@ Output includes a set of shapefile and geotiffs that show statistics of the PC w
 # Installation
 This is a Python 3.5 code that will run on any OS, which supports the packages. It runs and has been tested on Linux (Ubuntu/Debian), Windows 10, and Mac OS X. You will need several packages for python to run this code. These are standard packages and are included in many distributionss. If you use [conda](https://conda.io/docs/index.html), you can install the required packages (using Python 3.5):
 ```
-conda create -n py35 python=3.5 scipy pandas numpy matplotlib gdal scikit-image gdal ipython python=3.5 spyder h5py
+conda create -n py35 python=3.5 scipy pandas numpy matplotlib gdal scikit-image gdal ipython spyder h5py
 ```
 
 You can active this environment with ```source activate py35```.
@@ -31,6 +31,13 @@ Install a fast and simple LAS/LAZ reader/writer. You can do similar steps throug
 source activate py35
 pip install laspy
 ```
+
+If you plan to use some commands/pipelines from pdal, install the following:
+```
+source activate py35
+conda install -c mathieu pdal 
+```
+
 
 For some color rescaling (e.g., writing points to LAS files with new colors), scikit-image comes in handy:
 ```
@@ -63,20 +70,25 @@ python pc_geomorph_roughness.py
 
 Parameters to be chosen include (can also be listed with '''python pc_geomorph_roughness.py -h''':
 ## Required Parameters
-+ -i or --inlas: LAS/LAZ file with point-cloud data. Ideally, this file contains only ground points (class == 2)
-+ -r_m or --raster_m: Raster spacing for subsampling seed points on LAS/LAZ PC. Usually 0.5 to 2 m, default = 1.
-+ -srd_m or --sphere_radius_m: Radius of sphere used for selecting lidar points around seed points. These points are used for range, roughness, and density calculations. Default radius 1.5m, i.e., points within a sphere of 3m are chosen.
-+ -slope_srd_m or --slope_sphere_radius_m: Radius of sphere used for fitting a linear plane and calculating slope and detrending data (slope normalization). By default this is similar to the radius used for calculation roughness indices (srd_m), but this can be set to a different value. For example, larger radii use the slope of larger area to detrend data.
-+ -shp_clp or --shapefile_clip: Name / path of shapefile to clip interpolated output. Because the gridding procedure may introduce artefacts at the boundaries, a shapefile will be used to clip data to its original area. This is likely the same shapefile that has been used to generate the las data in the first place.
++ --inlas: LAS/LAZ file with point-cloud data. Ideally, this file contains only ground points (class == 2)
++ --raster_m: Raster spacing for subsampling seed points on LAS/LAZ PC. Usually 0.5 to 2 m, default = 1.
++ --sphere_radius_m: Radius of sphere used for selecting lidar points around seed points. These points are used for range, roughness, and density calculations. Default radius 1.5m, i.e., points within a sphere of 3m are chosen.
++ --slope_sphere_radius_m: Radius of sphere used for fitting a linear plane and calculating slope and detrending data (slope normalization). By default this is similar to the radius used for calculation roughness indices (srd_m), but this can be set to a different value. For example, larger radii use the slope of larger area to detrend data.
+parser.add_argument('--dem_fname', type=str, default='',  help='Filename of DEM to extract point spacing. Used to identify seed-point coordinates')
+
++ --shapefile_clip: Name / path of shapefile to clip interpolated output. Because the gridding procedure may introduce artefacts at the boundaries, a shapefile will be used to clip data to its original area. This is likely the same shapefile that has been used to generate the las data in the first place.
 ## Suggested Parameters
-+ -epsg or --epsg_code: EPSG code (integer) to define projection information. This should be the same EPSG code as the input data (no re-projection included yet) and can be taken from LAS/LAZ input file. Add this to ensure that output shapefile and GeoTIFFs are properly geocoded.
++ --epsg_code: EPSG code (integer) to define projection information. This should be the same EPSG code as the input data (no re-projection included yet) and can be taken from LAS/LAZ input file. Add this to ensure that output shapefile and GeoTIFFs are properly geocoded.
++ --raw_pt_cloud: Process raw point cloud (not homogenized) for seed-point statistcs (turned on with default=1).
++ --nr_random_sampling: Number of random-point cloud sampling iteration (how many iterations of bootstraping to estimate slope/curvature calculations (default=10).
++ --range_radii: Use a list of radii to calculate different length scales (i.e., iterate through different length scales to estimate dataset length scaling, default is 0 (turned off))
 
 ## Additional Parameters
-+ -o or --outlas: LAS file to be created (currently only LAS files are supported). This has the same dimension and number of points as the input LAS/LAZ file, but replaced color values reflecting roughness calculated over a given radius. Note that this will replace existing color information in the output file.
-+ -shape_out or --shapefile_out: Output shapefile storing calculated attributes for seed points only. Default filename will be generated with radius in the filename.
-+ -odir --outputdir: Output directory to store plots and pickle files. Default is directory containing LAS/LAZ file.
-+ -fig or --figure: Generate figures while processing. This often takes significant amount of time and can be turned off with -fig False.
-+ -color or --store_color_las: Generate a LAS file where deviation from the plane are saved in the color attribute of the LAS file for every point. *Note* that this will replace the color information in the LAS file (but will be saved to separate file). Default is False, can be turned on with --store_color True.
++ --outlas: LAS file to be created (currently only LAS files are supported). This has the same dimension and number of points as the input LAS/LAZ file, but replaced color values reflecting roughness calculated over a given radius. Note that this will replace existing color information in the output file.
++ --shapefile_out: Output shapefile storing calculated attributes for seed points only. Default filename will be generated with radius in the filename.
++ --outputdir: Output directory to store plots and pickle files. Default is directory containing LAS/LAZ file.
++ --figure: Generate figures while processing. This often takes significant amount of time and can be turned off with -fig False.
++ --store_color_las: Generate a LAS file where deviation from the plane are saved in the color attribute of the LAS file for every point. *Note* that this will replace the color information in the LAS file (but will be saved to separate file). Default is False, can be turned on with --store_color True.
 
 
 # Examples
@@ -84,7 +96,17 @@ Parameters to be chosen include (can also be listed with '''python pc_geomorph_r
 In order to generate a 1-m raster file which contains PC information from a radius of 2 m for each 1-m step (seed points, default parameters), you can use:
 
 ```
-python pc_geomorph_roughness.py -i Pozo_USGS_UTM11_NAD83_all_color_cl2.las -r_m 1 -srd_m 2
+python /home/bodo/Dropbox/soft/github/PC_geomorph_roughness/pc_geomorph_roughness.py \
+--inlas Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12.laz \
+--dem_fname Blanca_in_Pozo_USGS_UTM11_NAD83_SC12_1m.tif \
+--raster_m 1 \
+--sphere_radius_m 1.5 \
+--slope_sphere_radius_m 1.5 \
+--nr_random_sampling 10 \
+--epsg_code 26911 \
+--shapefile_clip SC12.shp \
+--nr_random_sampling 10 \
+--raw_pt_cloud 1
 ```
 
 Additional examples with generated output are included in [examples](examples/README.md)

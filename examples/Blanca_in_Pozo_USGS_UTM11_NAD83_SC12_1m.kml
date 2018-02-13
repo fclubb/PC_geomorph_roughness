@@ -1,0 +1,11 @@
+<GroundOverlay>
+  <name>E238.933k N3765.101k</name>
+  <Icon><href>Blanca_in_Pozo_USGS_UTM11_NAD83_SC12_1m.tif</href></Icon>
+  <LatLonBox>
+  <south>33.9941089065</south>
+  <west>-119.8264094082</west>
+  <north>33.9966406355</north>
+  <east>-119.8234780873</east>
+  <rotation>1.6068194735</rotation>
+  </LatLonBox>
+</GroundOverlay>
