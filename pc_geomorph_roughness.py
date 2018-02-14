@@ -49,8 +49,8 @@ parser.add_argument('-color', '--store_color', type=bool, default=False,  help='
 parser.add_argument('-cores', '--nr_of_cores', type=int, default=0,  help='Max. number of cores to use for multi-core processing. Default is to use all cores, set to --nr_of_cores 6 to use 6 cores.')
 args = parser.parse_args()
 
-#args.inlas = '/raid-cachi/bodo/Dropbox/California/SCI/Pozo/cat1/Pozo_USGS_UTM11_NAD83_all_color_cl_cat1n.laz'
-#args.shapefile_clip = '/raid-cachi/bodo/Dropbox/California/SCI/Pozo/shapefiles/Pozo_DTM_noveg_UTM11_NAD83_cat1.shp'
+#args.inlas = '/raid-cachi/bodo/Dropbox/California/SCI/Pozo/cat1/Pozo_USGS_UTM11_NAD83_all_color_cl_cat1.laz'
+#args.shapefile_clip = '/raid-cachi/bodo/Dropbox/California/SCI/Pozo/shapefiles/Pozo_DTM_noveg_UTM11_NAD83_cat1_b50m.shp'
 #args.dem_fname = '/raid-cachi/bodo/Dropbox/California/SCI/Pozo/cat1/Pozo_cat1_UTM11_NAD83_1m.tif'
 
 ### Function definitions
@@ -507,7 +507,7 @@ def pc_density(pts_xyz, pcl_xyzg_ckdtree, nn=51, show_density_information=0):
     del k
 
     #remove first number from array, because it is mostly 0 or the seed point itself
-    d = d[:,1::]
+    #d = d[:,1::]
     #d = np.sqrt(d)
     
     #Get minimum distances for all neighbors and use the minim distance of the last element (largest d)
@@ -535,7 +535,11 @@ def pc_density(pts_xyz, pcl_xyzg_ckdtree, nn=51, show_density_information=0):
         density_median[i] = len(di[di <= dmedian]) / disk_median
         #density_max[i] = len(di[di <= dmax]) / disk_max
         #probability is the inverse of the density
-        p_min[i] = disk_min / len(di[di <= dmin])
+        if len(di[di <= dmin]) < 1:
+            print('no point in minimum distance (i=%d)'%i)
+            p_min[i] = 0
+        else:
+            p_min[i] = disk_min / len(di[di <= dmin])
         p_median[i] = disk_median / len(di[di <= dmedian])
     
     #normalize probabilities by their sum
