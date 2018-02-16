@@ -1,0 +1,52 @@
+Driver: GTiff/GeoTIFF
+Files: /raid/bodo/Dropbox/soft/github/PC_geomorph_roughness/examples/geotif/Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_iter10_1.00m_rsphere1.50m_dz_range9010.tif
+Size is 271, 281
+Coordinate System is:
+PROJCS["NAD83 / UTM zone 11N",
+    GEOGCS["NAD83",
+        DATUM["North_American_Datum_1983",
+            SPHEROID["GRS 1980",6378137,298.257222101,
+                AUTHORITY["EPSG","7019"]],
+            TOWGS84[0,0,0,0,0,0,0],
+            AUTHORITY["EPSG","6269"]],
+        PRIMEM["Greenwich",0,
+            AUTHORITY["EPSG","8901"]],
+        UNIT["degree",0.0174532925199433,
+            AUTHORITY["EPSG","9122"]],
+        AUTHORITY["EPSG","4269"]],
+    PROJECTION["Transverse_Mercator"],
+    PARAMETER["latitude_of_origin",0],
+    PARAMETER["central_meridian",-117],
+    PARAMETER["scale_factor",0.9996],
+    PARAMETER["false_easting",500000],
+    PARAMETER["false_northing",0],
+    UNIT["metre",1,
+        AUTHORITY["EPSG","9001"]],
+    AXIS["Easting",EAST],
+    AXIS["Northing",NORTH],
+    AUTHORITY["EPSG","26911"]]
+Origin = (238933.061767578125000,3765381.734436037018895)
+Pixel Size = (0.999772075357472,-0.999054932509453)
+Metadata:
+  AREA_OR_POINT=Area
+Image Structure Metadata:
+  COMPRESSION=DEFLATE
+  INTERLEAVE=BAND
+Corner Coordinates:
+Upper Left  (  238933.062, 3765381.734) (119d49'35.22"W, 33d59'47.78"N)
+Lower Left  (  238933.062, 3765101.000) (119d49'34.92"W, 33d59'38.67"N)
+Upper Right (  239204.000, 3765381.734) (119d49'24.67"W, 33d59'48.02"N)
+Lower Right (  239204.000, 3765101.000) (119d49'24.37"W, 33d59'38.91"N)
+Center      (  239068.531, 3765241.367) (119d49'29.80"W, 33d59'43.34"N)
+Band 1 Block=271x7 Type=Float32, ColorInterp=Gray
+    Computed Min/Max=0.000,3.119
+  Minimum=0.000, Maximum=3.119, Mean=0.183, StdDev=0.105
+0...10...20...30...40...50...60...70...80...90...100 - done.
+  256 buckets from -0.00611557 to 3.12506:
+  54 6 16 89 356 928 1683 2376 2997 3569 3866 3888 3691 3460 3266 2832 2445 2085 1700 1504 1243 1045 944 800 659 599 446 434 384 317 259 240 219 181 170 161 123 150 99 94 96 91 99 66 72 53 51 60 48 35 35 33 35 25 28 28 17 18 18 15 12 21 8 10 11 7 9 6 10 4 8 10 9 7 2 1 5 7 4 2 1 3 0 2 3 0 3 5 0 0 1 0 3 0 0 0 0 1 0 0 1 1 0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 
+  NoData Value=-9999
+  Metadata:
+    STATISTICS_MAXIMUM=3.1189422607422
+    STATISTICS_MEAN=0.18294418437904
+    STATISTICS_MINIMUM=3.4333424991928e-11
+    STATISTICS_STDDEV=0.10507105043329

@@ -1,0 +1,52 @@
+Driver: GTiff/GeoTIFF
+Files: /raid/bodo/Dropbox/soft/github/PC_geomorph_roughness/examples/geotif/Blanca_in_Pozo_USGS_UTM11_NAD83_all_color_cl2_SC12_raw_1.00m_rsphere1.50m_dz_range9010.tif
+Size is 271, 281
+Coordinate System is:
+PROJCS["NAD83 / UTM zone 11N",
+    GEOGCS["NAD83",
+        DATUM["North_American_Datum_1983",
+            SPHEROID["GRS 1980",6378137,298.257222101,
+                AUTHORITY["EPSG","7019"]],
+            TOWGS84[0,0,0,0,0,0,0],
+            AUTHORITY["EPSG","6269"]],
+        PRIMEM["Greenwich",0,
+            AUTHORITY["EPSG","8901"]],
+        UNIT["degree",0.0174532925199433,
+            AUTHORITY["EPSG","9122"]],
+        AUTHORITY["EPSG","4269"]],
+    PROJECTION["Transverse_Mercator"],
+    PARAMETER["latitude_of_origin",0],
+    PARAMETER["central_meridian",-117],
+    PARAMETER["scale_factor",0.9996],
+    PARAMETER["false_easting",500000],
+    PARAMETER["false_northing",0],
+    UNIT["metre",1,
+        AUTHORITY["EPSG","9001"]],
+    AXIS["Easting",EAST],
+    AXIS["Northing",NORTH],
+    AUTHORITY["EPSG","26911"]]
+Origin = (238933.061767578125000,3765381.734436037018895)
+Pixel Size = (0.999772075357472,-0.999054932509453)
+Metadata:
+  AREA_OR_POINT=Area
+Image Structure Metadata:
+  COMPRESSION=DEFLATE
+  INTERLEAVE=BAND
+Corner Coordinates:
+Upper Left  (  238933.062, 3765381.734) (119d49'35.22"W, 33d59'47.78"N)
+Lower Left  (  238933.062, 3765101.000) (119d49'34.92"W, 33d59'38.67"N)
+Upper Right (  239204.000, 3765381.734) (119d49'24.67"W, 33d59'48.02"N)
+Lower Right (  239204.000, 3765101.000) (119d49'24.37"W, 33d59'38.91"N)
+Center      (  239068.531, 3765241.367) (119d49'29.80"W, 33d59'43.34"N)
+Band 1 Block=271x7 Type=Float32, ColorInterp=Gray
+    Computed Min/Max=0.000,2.108
+  Minimum=0.000, Maximum=2.108, Mean=0.188, StdDev=0.107
+0...10...20...30...40...50...60...70...80...90...100 - done.
+  256 buckets from -0.00413425 to 2.1126:
+  54 0 6 14 22 113 217 436 751 1088 1332 1668 1904 2241 2387 2507 2520 2505 2479 2349 2275 2163 1993 1816 1743 1515 1285 1228 1065 987 839 802 724 626 595 515 464 382 379 372 314 287 255 205 189 214 162 166 134 158 140 112 100 108 91 76 67 82 77 68 75 62 59 59 55 38 31 43 45 36 38 35 33 27 38 25 24 23 14 24 20 22 19 19 13 13 13 11 9 11 9 12 10 8 9 6 5 4 8 5 5 4 7 5 4 6 2 6 5 5 6 5 3 2 1 1 1 0 3 3 2 1 2 1 2 0 2 2 0 0 2 3 2 1 0 1 1 1 1 2 0 1 0 0 1 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 
+  NoData Value=-9999
+  Metadata:
+    STATISTICS_MAXIMUM=2.1084675788879
+    STATISTICS_MEAN=0.18788596083891
+    STATISTICS_MINIMUM=2.8478552849265e-11
+    STATISTICS_STDDEV=0.10658189164282
